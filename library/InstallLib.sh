@@ -1,16 +1,9 @@
 #
 # This is the script to run
 # to install all necessary tools.
+# but first please clone the repos
+# to thiis folder 
 #
-
-# This are some depencies that are not 
-# specified on the github pages but
-# are necessary (Probably they are more)
-
-# If you are having troubles to install
-# i'll leave the links of each github page 
-# below, be free to clone te repo and install
-# it with there instructions
 
 # PMDK
 # https://github.com/pmem/pmdk.git
@@ -26,6 +19,12 @@
 
 # KMOD
 # https://github.com/lucasdemarchi/kmod.git
+
+#
+# This are some depencies that are not 
+# specified on the github pages but
+# are necessary (Probably they are more)
+#
 
 sudo apt-get install autoconf
 sudo apt-get install pkg-config
