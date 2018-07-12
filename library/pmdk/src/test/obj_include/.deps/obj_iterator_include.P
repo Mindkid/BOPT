@@ -1,0 +1,24 @@
+obj_iterator_include.o: obj_iterator_include.c /usr/include/stdc-predef.h \
+ ../../../src/../src/include/libpmemobj/iterator.h \
+ ../../../src/../src/include/libpmemobj/iterator_base.h \
+ ../../../src/../src/include/libpmemobj/base.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h \
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/stdint.h /usr/include/stdint.h \
+ /usr/include/features.h /usr/include/x86_64-linux-gnu/sys/cdefs.h \
+ /usr/include/x86_64-linux-gnu/bits/wordsize.h \
+ /usr/include/x86_64-linux-gnu/gnu/stubs.h \
+ /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
+ /usr/include/x86_64-linux-gnu/bits/wchar.h \
+ ../../../src/../src/include/libpmemobj/types.h
+obj_iterator_include.c /usr/include/stdc-predef.h :
+ ../../../src/../src/include/libpmemobj/iterator.h :
+ ../../../src/../src/include/libpmemobj/iterator_base.h :
+ ../../../src/../src/include/libpmemobj/base.h :
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h :
+ /usr/lib/gcc/x86_64-linux-gnu/5/include/stdint.h /usr/include/stdint.h :
+ /usr/include/features.h /usr/include/x86_64-linux-gnu/sys/cdefs.h :
+ /usr/include/x86_64-linux-gnu/bits/wordsize.h :
+ /usr/include/x86_64-linux-gnu/gnu/stubs.h :
+ /usr/include/x86_64-linux-gnu/gnu/stubs-64.h :
+ /usr/include/x86_64-linux-gnu/bits/wchar.h :
+ ../../../src/../src/include/libpmemobj/types.h :

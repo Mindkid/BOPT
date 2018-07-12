@@ -1,0 +1,9 @@
+digraph "pmdk/src/include/libpmemobj++/detail" {
+  compound=true
+  node [ fontsize="10", fontname="Helvetica"];
+  edge [ labelfontsize="10", labelfontname="Helvetica"];
+  subgraph clusterdir_124488ccdfe190cb331860e735590c34 {
+    graph [ bgcolor="#ddddee", pencolor="black", label="libpmemobj++" fontname="Helvetica", fontsize="10", URL="dir_124488ccdfe190cb331860e735590c34.html"]
+  dir_f9f8a99eec997a94360b5f2d30573b88 [shape=box, label="detail", style="filled", fillcolor="#eeeeff", pencolor="black", URL="dir_f9f8a99eec997a94360b5f2d30573b88.html"];
+  }
+}

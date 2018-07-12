@@ -1,0 +1,13 @@
+digraph "pmdk/src/include" {
+  compound=true
+  node [ fontsize="10", fontname="Helvetica"];
+  edge [ labelfontsize="10", labelfontname="Helvetica"];
+  subgraph clusterdir_e284983b89979408625c9078f553cd30 {
+    graph [ bgcolor="#ddddee", pencolor="black", label="src" fontname="Helvetica", fontsize="10", URL="dir_e284983b89979408625c9078f553cd30.html"]
+  subgraph clusterdir_814f33235cdcdfd1f098ffcd70b86a50 {
+    graph [ bgcolor="#eeeeff", pencolor="black", label="" URL="dir_814f33235cdcdfd1f098ffcd70b86a50.html"];
+    dir_814f33235cdcdfd1f098ffcd70b86a50 [shape=plaintext label="include"];
+    dir_124488ccdfe190cb331860e735590c34 [shape=box label="libpmemobj++" color="red" fillcolor="white" style="filled" URL="dir_124488ccdfe190cb331860e735590c34.html"];
+  }
+  }
+}
