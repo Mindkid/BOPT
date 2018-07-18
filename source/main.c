@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <malloc.h>
 #include <errno.h>
+#include <limits.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -24,10 +25,13 @@
 #define MAP_FILE_NAME "../ramdisk/mapFile.dat"
 #define MAP_ADDR 0x7f49dcfc0000
 
-#define NUMBER_OF_OFFSET 3
+#define NUMBER_OF_OFFSET 2
 #define OFFSET_FILE_NAME "../ramdisk/offset.dat"
 
-
+enum { BITS_PER_WORD = sizeof(uint8_t) * CHAR_BIT };
+#define DIRTY_PAGES_FILE_NAME "../ramdisk/dirtyPages.dat"
+#define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
+#define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 /*
 *	This is the buffer were
 *	data are placed, the 
@@ -45,6 +49,12 @@ Element *workingPointer = NULL;
 */
 int* savePointerOffset = NULL;
 int* workingPointerOffset = NULL;
+
+/*
+*	This is the map where
+*	it's stored dirty pages
+*/
+uint8_t* dirtyPages = NULL;
 
 /*
 *	This represent the size
@@ -72,6 +82,7 @@ sem_t workingSemaphore;
 
 int fileDescriptor;
 int offsetDescriptor;
+int dirtyPagesDescriptor;
 
 /*
 *	@TODO
@@ -84,7 +95,7 @@ void batchingTheFlushs();
 void handler(int sig, siginfo_t *si, void *unused);
 void setSignalHandler();
 void init();
-void recover();
+void disablePages();
 void correctOffsets();
 int openFile();
 void printStructure();
@@ -171,31 +182,33 @@ void init()
 {
 	bool fileCreated = true;
 	bool offsetFileCreated = true;
+	bool dirtyPAgeFileCreated = true; 
 	
 	fileDescriptor = openFile(&fileCreated, MAP_FILE_NAME ,(MAP_SIZE * pageSize) - 1);
 	
 	offsetDescriptor = openFile(&offsetFileCreated, OFFSET_FILE_NAME, (NUMBER_OF_OFFSET * sizeof(int)) - 1);
+	
+	dirtyPagesDescriptor = openFile(&dirtyPAgeFileCreated, DIRTY_PAGES_FILE_NAME, MAP_SIZE - 1);
 	
 	/* 
 	* Allocate a buffer aligned on a page boundary;
 	* initial protection is PROT_READ | PROT_WRITE 
 	*/
 	buffer = (Element*) mmap((void*)MAP_ADDR, (MAP_SIZE * pageSize) - 1, PROT_READ | PROT_WRITE, MAP_SHARED, fileDescriptor, 0);
-
+	//buffer = (Element*) pmem_map_file(NULL, MAP_SIZE, PMEM_FILE_TMPFILE, O_TMPFILE, NULL, NULL);
+		
 	savePointer = buffer;
 	workingPointer = buffer;
 	
 	int* offsets = (int*) mmap(0, (NUMBER_OF_OFFSET * sizeof(int)) - 1, PROT_READ | PROT_WRITE, MAP_SHARED, offsetDescriptor, 0);
 
-
 	savePointerOffset = offsets;
 	workingPointerOffset = offsets + sizeof(int);
-	//buffer = (Element*) pmem_map_file(NULL, MAP_SIZE, PMEM_FILE_TMPFILE, O_TMPFILE, NULL, NULL);
 
+	dirtyPages = (uint8_t*) mmap(0,  MAP_SIZE - 1, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
+	
 	if(!fileCreated && !offsetFileCreated)
-	{
 		correctOffsets();
-	}
 		
 	if (savePointer == NULL)
 		handle_error("mmap");
@@ -229,17 +242,29 @@ void correctOffsets()
 * This funtion occours after 
 * having a fault in the system
 */
-void recover()
+void markPage()
 {
-    if(mprotect((void *)savePointer, pageSize, PROT_READ) == -1)
-    {
-        //handle_error("mprotect");
-        fprintf(stderr, "Value of errno: %d\n", errno);
-    }
-    savePointer += pageSize;
+	int currentPage = (savePointer - buffer) / pageSize;
+	dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
+	savePointer += pageSize;
 	workingPointer = savePointer;
-    if(buffer + pageSize >= savePointer)
-    	buffer = savePointer;
+}
+
+/*
+*
+*/
+
+void disablePages()
+{
+	int i, j;
+	
+	for(i = 0; i < MAP_SIZE ; i++)
+		for(j = 0; j < BITS_PER_WORD; j++)
+			if(dirtyPages[i] & (1 << j) != 0)
+				mprotect(buffer + (pageSize * ((i * BITS_PER_WORD) + j)), pageSize, PROT_NONE); 
+	
+	if(*dirtyPages & (1 << 0) != 0)
+		buffer += pageSize;	
 }
 
 /*
@@ -293,7 +318,9 @@ int main(int argc, char *argv[])
     init();
         
     if(savePointer != workingPointer)
-        recover();
+        markPage();
+    
+    disablePages();
     			
     if(pthread_create(&workingThread, NULL, workingBatchThread, NULL) != 0)
 		handle_error("pthreadCreate"); 
