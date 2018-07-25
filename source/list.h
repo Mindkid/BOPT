@@ -7,15 +7,15 @@
 
 typedef struct Element
 {
-    uint8_t value;
+    int value;
     struct Element* next;
         
 }Element;
 
 
-void addElementInList(Element** head, Element* toAdd);
-long removeElementInList(Element** head, uint8_t value);
-long updateElementInList(Element** head, uint8_t oldValue, uint8_t newValue); 
-Element* generateElement();
+Element* addElementInList(Element** head, int value, Element** workinPointer);
+long removeElementInList(Element** head, int value);
+long updateElementInList(Element** head, int oldValue, int newValue);
+Element* generateElement(int value, Element**  workingPointer);
 #endif
 

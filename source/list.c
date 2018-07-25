@@ -4,8 +4,9 @@
 *	This function adds an 
 *	Element to the list
 */
-void addElementInList(Element** head, Element* toAdd)
+Element* addElementInList(Element** head, int value, Element**  workingPointer)
 {
+	Element* toAdd = generateElement(value, workingPointer);
     if(*head != toAdd)
     {
         Element* current = *head;
@@ -15,16 +16,17 @@ void addElementInList(Element** head, Element* toAdd)
         }
         current->next = toAdd;
     }
+    return toAdd;
 }
 
 /*
 *	This function generates
 *	a random Element
 */
-Element* generateElement(Element**  workingPointer)
+Element* generateElement(int value, Element**  workingPointer)
 {
     Element* n =  *workingPointer;
-    n->value =  rand();
+    n->value =  value;
     n->next = NULL;    
 	*workingPointer += sizeof(Element);
     return n;

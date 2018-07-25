@@ -7,7 +7,7 @@ while getopts ":mu" opt
 		do
 			case ${opt} in
 				m)
-					mount -t ramfs -o dax /dev/sda4 /home/mrmind/Desktop/Tese/ramdisk/
+					mount -t ext4 -o dax /dev/sda4 /home/mrmind/Desktop/Tese/ramdisk/
 					;;
 				u)	
 					umount /home/mrmind/Desktop/Tese/ramdisk/
