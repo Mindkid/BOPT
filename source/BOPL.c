@@ -75,21 +75,21 @@ void bopl_init(int numberOfPages, int grain)
     
 	numberOfPages = (numberOfPages)? numberOfPages : MAP_SIZE;
 	
-	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME , (numberOfPages * pageSize) - 1);
-	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, numberOfPages - 1);
-	offsetDescriptor = openFile(&offsetFileCreated, OFFSET_FILE_NAME, (NUMBER_OF_OFFSET * sizeof(int)) - 1);
+	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME , (numberOfPages * pageSize));
+	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, numberOfPages);
+	offsetDescriptor = openFile(&offsetFileCreated, OFFSET_FILE_NAME, (NUMBER_OF_OFFSET * sizeof(int)));
 	
 	//buffer = (Element*) pmem_map_file(NULL, MAP_SIZE, PMEM_FILE_TMPFILE, O_TMPFILE, NULL, NULL);
 		
-	buffer = (Element*) mmap((void*)MAP_ADDR, (numberOfPages * pageSize) - 1, PROT_READ | PROT_WRITE, MAP_SHARED, fileDescriptor, 0);
+	buffer = (Element*) mmap((void*)MAP_ADDR, (numberOfPages * pageSize), PROT_READ | PROT_WRITE, MAP_SHARED, fileDescriptor, 0);
 	savePointer = buffer;
 	workingPointer = buffer;
 	
-	offsets = (int*) mmap(0, (NUMBER_OF_OFFSET * sizeof(int)) - 1, PROT_READ | PROT_WRITE, MAP_SHARED, offsetDescriptor, 0);
+	offsets = (int*) mmap(0, (NUMBER_OF_OFFSET * sizeof(int)), PROT_READ | PROT_WRITE, MAP_SHARED, offsetDescriptor, 0);
 	savePointerOffset = offsets;
 	workingPointerOffset = offsets + sizeof(int);
 
-	dirtyPages = (uint32_t*) mmap(0,  numberOfPages - 1, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
+	dirtyPages = (uint32_t*) mmap(0,  numberOfPages, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
 	
 	if(!offsetFileCreated)
 		correctOffsets();
@@ -137,9 +137,9 @@ void bopl_close(int numberOfPages)
 	sem_post(&workingSemaphore);
 	pthread_join(workingThread, NULL);
 	
-	munmap(buffer, (numberOfPages * pageSize) - 1);
-	munmap(offsets, (NUMBER_OF_OFFSET * sizeof(int)) - 1);
-	munmap(dirtyPages, numberOfPages - 1);
+	munmap(buffer, (numberOfPages * pageSize));
+	munmap(offsets, (NUMBER_OF_OFFSET * sizeof(int)));
+	munmap(dirtyPages, numberOfPages);
 	
 	close(dirtyPagesDescriptor);
  	close(fileDescriptor);
@@ -173,12 +173,13 @@ int bopl_lookup(int position_to_check)
 	Element* to_recurse = buffer;
 	while(to_recurse != NULL)
 	{
-		if(i = position_to_check)
+		if(i == position_to_check)
 		{
 			result = to_recurse->value;
 			break;
 		}	
 		to_recurse = to_recurse->next;
+		i++;
 	}
 	return result;
 }
