@@ -31,7 +31,7 @@ uint32_t* dirtyPages = NULL;
 */
 long pageSize = 0;
 long wordBytes = 0;
-
+long numberPages = 1;
 /*
 *	This is the working thread
 *	this thread do the batchs 
@@ -69,27 +69,32 @@ int wordone = 0;
 void bopl_init(int numberOfPages, int grain)
 {
 	int offsetFileCreated = 1;
+	int sizeOfFile, sizeOfDirtyPagesFile, sizeOfOffsetFile;
 	
 	pageSize = sysconf(_SC_PAGE_SIZE);
     wordBytes = sysconf(_SC_WORD_BIT);  
-    
-	numberOfPages = (numberOfPages)? numberOfPages : MAP_SIZE;
+  
+	numberPages = (numberOfPages)? numberOfPages : numberPages;
 	
-	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME , (numberOfPages * pageSize));
-	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, numberOfPages);
-	offsetDescriptor = openFile(&offsetFileCreated, OFFSET_FILE_NAME, (NUMBER_OF_OFFSET * sizeof(int)));
+	sizeOfFile = (numberPages * pageSize);
+	sizeOfDirtyPagesFile = (numberPages / BITS_PER_WORD);
+	sizeOfOffsetFile = NUMBER_OF_OFFSET * sizeof(int);
+	
+	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME, sizeOfFile);
+	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, sizeOfDirtyPagesFile);
+	offsetDescriptor = openFile(&offsetFileCreated, OFFSET_FILE_NAME, sizeOfOffsetFile);
 	
 	//buffer = (Element*) pmem_map_file(NULL, MAP_SIZE, PMEM_FILE_TMPFILE, O_TMPFILE, NULL, NULL);
 		
-	buffer = (Element*) mmap((void*)MAP_ADDR, (numberOfPages * pageSize), PROT_READ | PROT_WRITE, MAP_SHARED, fileDescriptor, 0);
+	buffer = (Element*) mmap((void*)MAP_ADDR, sizeOfFile, PROT_READ | PROT_WRITE, MAP_SHARED, fileDescriptor, 0);
 	savePointer = buffer;
 	workingPointer = buffer;
 	
-	offsets = (int*) mmap(0, (NUMBER_OF_OFFSET * sizeof(int)), PROT_READ | PROT_WRITE, MAP_SHARED, offsetDescriptor, 0);
+	offsets = (int*) mmap(0, sizeOfOffsetFile, PROT_READ | PROT_WRITE, MAP_SHARED, offsetDescriptor, 0);
 	savePointerOffset = offsets;
 	workingPointerOffset = offsets + sizeof(int);
 
-	dirtyPages = (uint32_t*) mmap(0,  numberOfPages, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
+	dirtyPages = (uint32_t*) mmap(0,  sizeOfDirtyPagesFile, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
 	
 	if(!offsetFileCreated)
 		correctOffsets();
@@ -130,16 +135,16 @@ void bopl_insert(int new_value, int repetitions)
 	*	closes all the file descriptors
 	*	and removes the mappings
 	*/
-void bopl_close(int numberOfPages)
+void bopl_close()
 {	
 	
 	wordone = 1;
 	sem_post(&workingSemaphore);
 	pthread_join(workingThread, NULL);
 	
-	munmap(buffer, (numberOfPages * pageSize));
+	munmap(buffer, (numberPages * pageSize));
 	munmap(offsets, (NUMBER_OF_OFFSET * sizeof(int)));
-	munmap(dirtyPages, numberOfPages);
+	munmap(dirtyPages, (numberPages/ BITS_PER_WORD));
 	
 	close(dirtyPagesDescriptor);
  	close(fileDescriptor);
@@ -150,13 +155,16 @@ void bopl_close(int numberOfPages)
 	*	TODO ask Barreto if ok?
 	*
 	*	This function simulates 
-	*	a crash, in this case kills
-	*	the thread that does the flush's
+	*	a crash of the machine,
+	*	in this case kills the
+	*	thread that does the flush's
 	*/
 	
 void bopl_crash()
 {
 	pthread_cancel(workingThread);
+	writeThrash();
+	bopl_close();
 }
 
 	/*
@@ -190,7 +198,7 @@ int bopl_lookup(int position_to_check)
 *	to the thread execution
 */
 
-static void batchingTheFlushs(Element* nextPointer)
+void batchingTheFlushs(Element* nextPointer)
 {
     
     //Element* nextPage = savePointer + pageSize;
@@ -211,7 +219,7 @@ static void batchingTheFlushs(Element* nextPointer)
     FLUSH(workingPointerOffset);
 }
 
-static void* workingBatchThread(void* grain)
+void* workingBatchThread(void* grain)
 {
 	int granularity = *(int*) grain;
 	
@@ -223,13 +231,14 @@ static void* workingBatchThread(void* grain)
 	{
 		if(workingPointer >= savePointer + page_granularity)
 			batchingTheFlushs(savePointer + pageSize);
-		if(wordone && workingPointer >= savePointer)
+		else
 		{
-			batchingTheFlushs(workingPointer);
-			break;
+			if(wordone && workingPointer >= savePointer)
+			{
+				batchingTheFlushs(workingPointer);
+				break;
+			}
 		}
-			
-			
 	}
 }
 
@@ -244,7 +253,7 @@ static void* workingBatchThread(void* grain)
 	*	pointers given the offsets
 	*/
 	
-static void correctOffsets()
+void correctOffsets()
 {
 	uint8_t offsetSP = *(savePointerOffset);
 	uint8_t offsetWP = *(workingPointerOffset);	
@@ -258,7 +267,7 @@ static void correctOffsets()
 	* having a fault in the system
 	*/
 	
-static void markPage()
+void markPage()
 {
 	int currentPage = getPointerPage(savePointer);
 	dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
@@ -272,7 +281,7 @@ static void markPage()
 	*	of a given pointer 
 	*/
 
-static int getPointerPage(Element* pointer)
+int getPointerPage(Element* pointer)
 {
 	int currentPage = (pointer - buffer) / pageSize;
 	return currentPage;
@@ -284,7 +293,7 @@ static int getPointerPage(Element* pointer)
 	* this pages searched from the bitmap 
 	*/
 	
-static void disablePages()
+void disablePages()
 {
 	int i, j;
 	for(i = 0; i < MAP_SIZE ; i++)
@@ -295,6 +304,16 @@ static void disablePages()
 		}
 	if((*dirtyPages & 1) != 0)
 		buffer += pageSize;	
+}
+
+void writeThrash()
+{
+	srandom(0);
+	while(savePointer <= workingPointer)
+	{
+		savePointer = (Element*) random();
+		savePointer += sizeof(int);
+	}
 }
 
 /*
@@ -308,7 +327,7 @@ static void disablePages()
 	*	If the file doesn't exists it's
 	*	created with a given size
 	*/
-static int openFile(int* created, char* fileName, long size)
+int openFile(int* created, char* fileName, long size)
 {
 	int fd;
 	if(access(fileName, F_OK) != -1)
@@ -330,7 +349,7 @@ static int openFile(int* created, char* fileName, long size)
 	* the signal handler
 	*/
 
-static void setSignalHandler()
+void setSignalHandler()
 {
 	struct sigaction sa;
 	sa.sa_flags = SA_SIGINFO;
@@ -342,7 +361,7 @@ static void setSignalHandler()
 		handle_error("sigaction");
 }
 
-static void handler(int sig, siginfo_t *si, void *unused)
+void handler(int sig, siginfo_t *si, void *unused)
 {
 	switch(sig)
 	{
@@ -365,7 +384,7 @@ static void handler(int sig, siginfo_t *si, void *unused)
 	*	for abstraction purpose
 	*/
 	
-static void addElement(Element** head, int value)
+void addElement(Element** head, int value)
 {
 	Element* element_added = addElementInList(head, value, &workingPointer);
 	*workingPointerOffset = workingPointer - buffer;
