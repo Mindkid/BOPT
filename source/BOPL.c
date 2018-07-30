@@ -15,8 +15,6 @@ Element *workingPointer = NULL;
 *	This is the map where
 *	it's stored the offset
 */
-int* savePointerOffset = NULL;
-int* workingPointerOffset = NULL;
 int* offsets = NULL;
 /*
 *	This is the map where
@@ -91,8 +89,6 @@ void bopl_init(int numberOfPages, int grain)
 	workingPointer = buffer;
 	
 	offsets = (int*) mmap(0, sizeOfOffsetFile, PROT_READ | PROT_WRITE, MAP_SHARED, offsetDescriptor, 0);
-	savePointerOffset = offsets;
-	workingPointerOffset = offsets + sizeof(int);
 
 	dirtyPages = (uint32_t*) mmap(0,  sizeOfDirtyPagesFile, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
 	
@@ -102,14 +98,14 @@ void bopl_init(int numberOfPages, int grain)
 	if (savePointer == NULL)
 		handle_error("mmap");
     
-    sem_init(&workingSemaphore, 0,0);
+    sem_init(&workingSemaphore, 0, 0);
     
     if(savePointer != workingPointer)
         markPage();
     
     disablePages();
     			
-    if(pthread_create(&workingThread, NULL, workingBatchThread, &grain) != 0)
+    if(pthread_create(&workingThread, NULL, &workingBatchThread, &grain) != 0)
 		handle_error("pthreadCreate"); 
 }
 
@@ -201,27 +197,22 @@ int bopl_lookup(int position_to_check)
 void batchingTheFlushs(Element* nextPointer)
 {
     
-    //Element* nextPage = savePointer + pageSize;
-    Element* flushPointer = savePointer;
-   
-   	// Perguntar ao professor se é necessário
-    //nextPage = (nextPage > workingPointer) ? workingPointer : nextPage;
-    
-    while(flushPointer <= nextPointer)
+    while(savePointer <= nextPointer)
     {
-    	FLUSH(flushPointer);
+    	FLUSH(savePointer);
         //pmem_flush(flushPointer, wordBytes);
-        flushPointer += wordBytes;
+        savePointer += wordBytes;
     }
-    savePointer = nextPointer;
-    *savePointerOffset = savePointer - buffer;
-    FLUSH(savePointerOffset);
-    FLUSH(workingPointerOffset);
+    offsets[0] = savePointer - buffer;
+    
+    // Because it is a 64 bits  the both 
+    // offsets are updated in this flush
+    FLUSH(offsets);
 }
 
 void* workingBatchThread(void* grain)
 {
-	int granularity = *(int*) grain;
+	int granularity = *((int*) grain);
 	
 	granularity = (granularity <= 0)?  1 : granularity;
 	
@@ -230,7 +221,7 @@ void* workingBatchThread(void* grain)
 	while(sem_wait(&workingSemaphore))
 	{
 		if(workingPointer >= savePointer + page_granularity)
-			batchingTheFlushs(savePointer + pageSize);
+			batchingTheFlushs(savePointer + page_granularity);
 		else
 		{
 			if(wordone && workingPointer >= savePointer)
@@ -255,8 +246,8 @@ void* workingBatchThread(void* grain)
 	
 void correctOffsets()
 {
-	uint8_t offsetSP = *(savePointerOffset);
-	uint8_t offsetWP = *(workingPointerOffset);	
+	int offsetSP = offsets[0];
+	int offsetWP = offsets[1];	
 	savePointer += offsetSP;
 	workingPointer += offsetWP;  
 }
@@ -270,6 +261,7 @@ void correctOffsets()
 void markPage()
 {
 	int currentPage = getPointerPage(savePointer);
+	puts("Entrou aqui!!");
 	dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
 	FLUSH(dirtyPages + WORD_OFFSET(currentPage));
 	savePointer += pageSize;
@@ -312,7 +304,7 @@ void writeThrash()
 	while(savePointer <= workingPointer)
 	{
 		savePointer = (Element*) random();
-		savePointer += sizeof(int);
+		savePointer += sizeof(Element);
 	}
 }
 
@@ -387,7 +379,7 @@ void handler(int sig, siginfo_t *si, void *unused)
 void addElement(Element** head, int value)
 {
 	Element* element_added = addElementInList(head, value, &workingPointer);
-	*workingPointerOffset = workingPointer - buffer;
+	offsets[1] = workingPointer - buffer;
 	if(getPointerPage(element_added) < getPointerPage(workingPointer))
 		sem_post(&workingSemaphore);
 }

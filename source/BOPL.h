@@ -50,16 +50,13 @@ void bopl_remove(int value_to_remove);
 void bopl_close();
 void bopl_crash();
 
-/****************** TODO***************************/
-/***** NAO SEI SE COLOCO AQUI E TIRO O STATIC *****/
-/********** OU COLOCO NO .C COM O STATIC **********/
 /*
 *	This are the functions related
 *	to the thread execution
 */
 
-static void* workingBatchThread();
-static void batchingTheFlushs(Element* nextPointer);
+void* workingBatchThread(void* grain);
+void batchingTheFlushs(Element* nextPointer);
 
 /*
 *	This are the functions related
@@ -67,24 +64,24 @@ static void batchingTheFlushs(Element* nextPointer);
 *	offsets
 */
 
-static void disablePages();
-static void correctOffsets();
-static void markPage();
-static int getPointerPage(Element* pointer);
-static void writeThrash();
+void disablePages();
+void correctOffsets();
+void markPage();
+int getPointerPage(Element* pointer);
+void writeThrash();
 /*
 *	This are the function used by 
 *	the bopl_init
 */
 
-static int openFile();
-static void handler(int sig, siginfo_t *si, void *unused);
-static void setSignalHandler();
+int openFile();
+void handler(int sig, siginfo_t *si, void *unused);
+void setSignalHandler();
 
 /*
 *	This is the function use by 
 *	the bopl_insert
 */
-static void addElement(Element** head, int value);
+void addElement(Element** head, int value);
 /**************************************************/
 #endif
