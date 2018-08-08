@@ -42,7 +42,7 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 *	librarry BOPL this are the ones
 *	to use in the main function 
 */
-void bopl_init(int numberOfPages, int grain);
+void bopl_init(int numberOfPages, int* grain);
 void bopl_insert(int new_value, int repetitions);
 int bopl_lookup(int position_to_check);
 int bopl_update(int old_value, int new_value);

@@ -64,7 +64,7 @@ int wordone = 0;
 	* program starts properlly 
 	*/
 	
-void bopl_init(int numberOfPages, int grain)
+void bopl_init(int numberOfPages, int* grain)
 {
 	int offsetFileCreated = 1;
 	int sizeOfFile, sizeOfDirtyPagesFile, sizeOfOffsetFile;
@@ -100,12 +100,12 @@ void bopl_init(int numberOfPages, int grain)
     
     sem_init(&workingSemaphore, 0, 0);
     
-    if(savePointer != workingPointer)
+    if(savePointer < workingPointer)
         markPage();
     
     disablePages();
     			
-    if(pthread_create(&workingThread, NULL, &workingBatchThread, &grain) != 0)
+    if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
 		handle_error("pthreadCreate"); 
 }
 
@@ -218,7 +218,7 @@ void* workingBatchThread(void* grain)
 	
 	int page_granularity = pageSize * granularity;
 	
-	while(sem_wait(&workingSemaphore))
+	while(!sem_wait(&workingSemaphore))
 	{
 		if(workingPointer >= savePointer + page_granularity)
 			batchingTheFlushs(savePointer + page_granularity);
