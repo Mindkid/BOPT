@@ -43,8 +43,8 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 *	to use in the main function 
 */
 void bopl_init(int numberOfPages, int* grain);
-void bopl_insert(int new_value, int repetitions);
-int bopl_lookup(int position_to_check);
+void bopl_insert(size_t sizeOfValue, void* new_value, int repetitions);
+void* bopl_lookup(int position_to_check);
 int bopl_update(int old_value, int new_value);
 void bopl_remove(int value_to_remove);
 void bopl_close();
@@ -82,6 +82,6 @@ void setSignalHandler();
 *	This is the function use by 
 *	the bopl_insert
 */
-void addElement(Element** head, int value);
+void addElement(size_t sizeOfValue, void* value);
 /**************************************************/
 #endif

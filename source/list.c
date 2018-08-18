@@ -4,9 +4,9 @@
 *	This function adds an 
 *	Element to the list
 */
-Element* addElementInList(Element** head, int value, Element**  workingPointer)
+Element* addElementInList(Element** head, size_t sizeOfValue, void* value, Element**  workingPointer)
 {
-	Element* toAdd = generateElement(value, workingPointer);
+	Element* toAdd = generateElement(sizeOfValue, value, workingPointer);
     if(*head != toAdd)
     {
         Element* current = *head;
@@ -23,12 +23,18 @@ Element* addElementInList(Element** head, int value, Element**  workingPointer)
 *	This function generates
 *	a random Element
 */
-Element* generateElement(int value, Element**  workingPointer)
+Element* generateElement(size_t sizeOfValue, const void* value, Element** workingPointer)
 {
     Element* n =  *workingPointer;
-    n->value =  value;
-    n->next = NULL;    
 	*workingPointer += sizeof(Element);
+	n->sizeOfValue =  sizeOfValue;
+	
+	n->value = (void*) *workingPointer;
+  	memmove(n->value, value, sizeOfValue);
+  	*workingPointer += sizeOfValue;
+    
+    n->next = NULL;    
+
     return n;
 }
 

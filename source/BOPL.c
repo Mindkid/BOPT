@@ -113,13 +113,13 @@ void bopl_init(int numberOfPages, int* grain)
 	*	This functions inserts 
 	*	the new_value to the list
 	*/
-void bopl_insert(int new_value, int repetitions)
+void bopl_insert(size_t sizeOfValue, void* new_value, int repetitions)
 {
 	int i;
 	repetitions = (repetitions <= 0)? 1 : repetitions;
 	for(i = 0; i < repetitions; i++)
 	{
-		addElement(&buffer, new_value);
+		addElement(sizeOfValue,  new_value);
 	}
 }
 
@@ -170,10 +170,10 @@ void bopl_crash()
 	*	a given position of the list
 	*/
 	
-int bopl_lookup(int position_to_check)
+void* bopl_lookup(int position_to_check)
 {
 	int i = 0;
-	int result = 0;
+	void* result;
 	Element* to_recurse = buffer;
 	while(to_recurse != NULL)
 	{
@@ -376,9 +376,9 @@ void handler(int sig, siginfo_t *si, void *unused)
 	*	for abstraction purpose
 	*/
 	
-void addElement(Element** head, int value)
+void addElement(size_t sizeOfValue, void* value)
 {
-	Element* element_added = addElementInList(head, value, &workingPointer);
+	Element* element_added = addElementInList(&buffer, sizeOfValue, value, &workingPointer);
 	offsets[1] = workingPointer - buffer;
 	if(getPointerPage(element_added) < getPointerPage(workingPointer))
 		sem_post(&workingSemaphore);
