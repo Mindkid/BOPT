@@ -38,3 +38,28 @@ Element* generateElement(size_t sizeOfValue, const void* value, Element** workin
     return n;
 }
 
+/*
+*	This function finds the
+*	element given a position	
+*/
+
+Element* findElement(Element* head, int position_to_check)
+{
+	int i = 0;
+	Element* result = head;
+	while(i < position_to_check)
+	{
+		if(result->next == NULL)
+			break;
+		result = result->next;
+		i++;
+	}
+	return result;
+}
+
+Element* updateElementInList(Element* toUpdate, size_t sizeOfValue, void* newValue)
+{
+	toUpdate->sizeOfValue =  sizeOfValue;
+	memmove(toUpdate->value, newValue,  sizeOfValue);
+	return toUpdate;
+}

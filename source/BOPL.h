@@ -16,6 +16,7 @@
 //#include <libpmem.h>
 #include "list.h"
 
+#define BITS_ON_A_BYTE 8
 
 #define handle_error(msg) \
            do { perror(msg); exit(EXIT_FAILURE); } while (0)
@@ -36,16 +37,48 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 
+/*
+*	The List can be operated in 
+*	three modes:
+*
+*	0 - Without Mechanism Flush Only
+*	1 - With Mechanism Undo-log Flush
+*	2 - With Mechanism HashMap Flush
+*
+*
+*	The mode it's configurated in the 
+*	BOPL_init function
+*/
+
+#define FLUSH_ONLY 0
+#define UNDO_LOG_FLUSH 1
+#define HASH_MAP_FLUSH 2
+
 
 /*
 *	This are the function of the 
 *	librarry BOPL this are the ones
 *	to use in the main function 
 */
-void bopl_init(int numberOfPages, int* grain);
+void bopl_init(int numberOfPages, int* grain, int mode);
 void bopl_insert(size_t sizeOfValue, void* new_value, int repetitions);
 void* bopl_lookup(int position_to_check);
-int bopl_update(int old_value, int new_value);
+
+/*	
+*	TODO ask Barreto (utilizar o valor?)
+*	
+*	Updates the value thats it's 
+*	on a given position of the list
+*/
+int bopl_update(int position, size_t sizeOfValue, void* new_value);
+
+/*	
+*	TODO ask Barreto (utilizar o valor?)
+*	
+*	Removes the value thats it's 
+*	on a given position of the list
+*/
+
 void bopl_remove(int value_to_remove);
 void bopl_close();
 void bopl_crash();
@@ -77,11 +110,45 @@ void writeThrash();
 int openFile();
 void handler(int sig, siginfo_t *si, void *unused);
 void setSignalHandler();
+void initBufferMapping(int numberOfPages);
+void initMechanism(int* grain);
+
 
 /*
-*	This is the function use by 
-*	the bopl_insert
+*	This are the functions that
+*	perform the insert of the values
 */
 void addElement(size_t sizeOfValue, void* value);
+void addElementMechanism(size_t sizeOfValue, void* value);
+void addElementFlush(size_t sizeOfValue, void* value);
+
+/*
+*	This are the functions used 
+*	to perform the update of the 
+*	values
+*/
+
+void updateElement(int position, size_t sizeOfValue, void* new_value);
+void removeElement(Element* father, Element* new_son);
+
+void updateElementFlush(int position, size_t sizeOfValue, void* new_value);
+void removeElementFlush(Element* father, Element* new_son);
+
+void updateElementUndoLog(int position, size_t sizeOfValue, void* new_value);
+void removeElementUndoLog(Element* father, Element* new_son);
+
+
+void updateElementHashMap(int position, size_t sizeOfValue, void* new_value);
+void removeElementHashMap(Element* father, Element* new_son);
+
+void updateElementMechanism(int position, size_t sizeOfValue, void* new_value);
+void removeElementMechanism(Element* father, Element* new_son);
+/*
+*	Function that it's used
+*	to force flush while in
+*	the FLUSH_ONLY mode
+*/
+int forceFlush(Element* toFlush, size_t sizeOfValue);
+
 /**************************************************/
 #endif

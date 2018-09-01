@@ -16,8 +16,16 @@ typedef struct Element
 
 
 Element* addElementInList(Element** head, size_t sizeOfValue, void* value, Element**  workingPointer);
+
 long removeElementInList(Element** head, int value);
-long updateElementInList(Element** head, int oldValue, int newValue);
+
+Element* updateElementInList(Element* toUpdate, size_t oldValue, void* newValue);
+
+
 Element* generateElement(size_t sizeOfValue, const void* value, Element** workingPointer);
+
+
+Element* findElement(Element* head, int position_to_check);
+
 #endif
 

@@ -52,6 +52,23 @@ int offsetDescriptor;
 int dirtyPagesDescriptor;
 
 int wordone = 0;
+
+/*
+*	The List can be operated in 
+*	three mods:
+*
+*	0 - Without Mechanism Flush Only
+*	1 - With Mechanism Undo-log Flush
+*	2 - With Mechanism HashMap Flush
+*
+*
+*	The mode it's configurated in the 
+*	BOPL_init function
+*/
+int listMode;
+
+
+
 /*
 *	This are the function of the 
 *	librarry BOPL this are the ones
@@ -64,49 +81,28 @@ int wordone = 0;
 	* program starts properlly 
 	*/
 	
-void bopl_init(int numberOfPages, int* grain)
+void bopl_init(int numberOfPages, int* grain, int mode)
 {
-	int offsetFileCreated = 1;
-	int sizeOfFile, sizeOfDirtyPagesFile, sizeOfOffsetFile;
+	initBufferMapping(numberOfPages);
 	
-	pageSize = sysconf(_SC_PAGE_SIZE);
-    wordBytes = sysconf(_SC_WORD_BIT);  
-  
-	numberPages = (numberOfPages)? numberOfPages : numberPages;
-	
-	sizeOfFile = (numberPages * pageSize);
-	sizeOfDirtyPagesFile = (numberPages / BITS_PER_WORD);
-	sizeOfOffsetFile = NUMBER_OF_OFFSET * sizeof(int);
-	
-	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME, sizeOfFile);
-	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, sizeOfDirtyPagesFile);
-	offsetDescriptor = openFile(&offsetFileCreated, OFFSET_FILE_NAME, sizeOfOffsetFile);
-	
-	//buffer = (Element*) pmem_map_file(NULL, MAP_SIZE, PMEM_FILE_TMPFILE, O_TMPFILE, NULL, NULL);
-		
-	buffer = (Element*) mmap((void*)MAP_ADDR, sizeOfFile, PROT_READ | PROT_WRITE, MAP_SHARED, fileDescriptor, 0);
-	savePointer = buffer;
-	workingPointer = buffer;
-	
-	offsets = (int*) mmap(0, sizeOfOffsetFile, PROT_READ | PROT_WRITE, MAP_SHARED, offsetDescriptor, 0);
+	switch(mode)
+	{
+		/*	This two modes use 
+		*	the batching mechanism
+		*/  	
+		case UNDO_LOG_FLUSH:
+			// Do nothing
+		case HASH_MAP_FLUSH:
+			initMechanism(grain);
+		case FLUSH_ONLY:
+			listMode = mode;
+			break;
+		default:
+			perror("Please see the correct modes at BOPL.h\n");
+			exit(-1);
+			break;		
+	}
 
-	dirtyPages = (uint32_t*) mmap(0,  sizeOfDirtyPagesFile, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
-	
-	if(!offsetFileCreated)
-		correctOffsets();
-		
-	if (savePointer == NULL)
-		handle_error("mmap");
-    
-    sem_init(&workingSemaphore, 0, 0);
-    
-    if(savePointer < workingPointer)
-        markPage();
-    
-    disablePages();
-    			
-    if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
-		handle_error("pthreadCreate"); 
 }
 
 	/*
@@ -124,7 +120,6 @@ void bopl_insert(size_t sizeOfValue, void* new_value, int repetitions)
 }
 
 	/*
-	*	TODO ask Barreto if ok?
 	*
 	*	This is the close function
 	*	it waits for the thread and
@@ -148,7 +143,6 @@ void bopl_close()
 }
 
 	/*
-	*	TODO ask Barreto if ok?
 	*
 	*	This function simulates 
 	*	a crash of the machine,
@@ -172,20 +166,84 @@ void bopl_crash()
 	
 void* bopl_lookup(int position_to_check)
 {
-	int i = 0;
-	void* result;
-	Element* to_recurse = buffer;
-	while(to_recurse != NULL)
-	{
-		if(i == position_to_check)
-		{
-			result = to_recurse->value;
-			break;
-		}	
-		to_recurse = to_recurse->next;
-		i++;
-	}
-	return result;
+	Element* result = findElement(buffer, position_to_check);
+	return result->value;
+}
+
+/*
+*	This function are related
+*	to the implementation 
+*	of the mechanism 
+*/
+
+	/*
+	*	This function initiates 
+	*	the buffer where the 
+	*	informations it's stored 
+	*/
+	
+void initBufferMapping(int numberOfPages)
+{
+	int numberPages = 1;
+	int offsetFileCreated = 1;
+	
+	int sizeOfFile;
+	
+	pageSize = sysconf(_SC_PAGE_SIZE);
+	wordBytes = sysconf(_SC_WORD_BIT) / BITS_ON_A_BYTE;
+   
+   	
+	numberPages = (numberOfPages > 0)? numberOfPages : numberPages;
+	
+	sizeOfFile = (numberPages * pageSize);
+	
+	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME, sizeOfFile);
+	
+	//buffer = (Element*) pmem_map_file(NULL, MAP_SIZE, PMEM_FILE_TMPFILE, O_TMPFILE, NULL, NULL);
+		
+	buffer = (Element*) mmap((void*)MAP_ADDR, sizeOfFile, PROT_READ | PROT_WRITE, MAP_SHARED, fileDescriptor, 0);
+	workingPointer = buffer;
+}
+	/*
+	*	This function initiates 
+	*	the mechanism that it's 
+	*	used at the second and 
+	*	the third mode of the 
+	*	program
+	*/
+	
+void initMechanism(int* grain)
+{
+	int offsetFileCreated = 1;
+	int sizeOfDirtyPagesFile, sizeOfOffsetFile;
+	  
+	sizeOfDirtyPagesFile = (numberPages / BITS_PER_WORD);
+	sizeOfOffsetFile = NUMBER_OF_OFFSET * sizeof(int);
+	
+	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, sizeOfDirtyPagesFile);
+	offsetDescriptor = openFile(&offsetFileCreated, OFFSET_FILE_NAME, sizeOfOffsetFile);
+	
+	savePointer = buffer;
+	
+	offsets = (int*) mmap(0, sizeOfOffsetFile, PROT_READ | PROT_WRITE, MAP_SHARED, offsetDescriptor, 0);
+
+	dirtyPages = (uint32_t*) mmap(0,  sizeOfDirtyPagesFile, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
+	
+	if(!offsetFileCreated)
+		correctOffsets();
+		
+	if (savePointer == NULL)
+		handle_error("mmap");
+    
+    sem_init(&workingSemaphore, 0, 0);
+    
+    if(savePointer < workingPointer)
+        markPage();
+    
+    disablePages();
+    			
+    if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
+		handle_error("pthreadCreate"); 
 }
 
 
@@ -288,14 +346,22 @@ int getPointerPage(Element* pointer)
 void disablePages()
 {
 	int i, j;
+	int stopFlag = 0;
+	int bitArrayValue;
+	
 	for(i = 0; i < MAP_SIZE ; i++)
 		for(j = 0; j < BITS_PER_WORD; j++)
 		{
-			if((dirtyPages[i] & (1 << j)) != 0)
+			bitArrayValue = (dirtyPages[i] & (1 << j));
+			if(bitArrayValue != 0)
 				mprotect(buffer + (pageSize * ((i * BITS_PER_WORD) + j)), pageSize, PROT_NONE); 
+			
+			if(!stopFlag)
+				if(bitArrayValue != 0)
+					buffer += pageSize * ((i * BITS_PER_WORD) + j);
+				else
+					stopFlag = 1;
 		}
-	if((*dirtyPages & 1) != 0)
-		buffer += pageSize;	
 }
 
 void writeThrash()
@@ -375,13 +441,128 @@ void handler(int sig, siginfo_t *si, void *unused)
 	*	the list, it's necessary
 	*	for abstraction purpose
 	*/
-	
+
+
 void addElement(size_t sizeOfValue, void* value)
+{
+	if(listMode == FLUSH_ONLY)
+		addElementFlush(sizeOfValue, value);
+	else
+		addElementMechanism(sizeOfValue, value);	
+}
+
+	/*
+	*	This function inserts using
+	*	the batching mecanism
+	*/		
+void addElementMechanism(size_t sizeOfValue, void* value)
 {
 	Element* element_added = addElementInList(&buffer, sizeOfValue, value, &workingPointer);
 	offsets[1] = workingPointer - buffer;
 	if(getPointerPage(element_added) < getPointerPage(workingPointer))
 		sem_post(&workingSemaphore);
+}
+
+	/*
+	*	This function inserts using
+	*	only flush
+	*/
+void addElementFlush(size_t sizeOfValue, void* value)
+{
+	int sizeOfElement;
+	
+	Element* element_added = addElementInList(&buffer, sizeOfValue, value, &workingPointer);
+	
+	sizeOfElement = sizeof(Element) + sizeOfValue;
+	
+	while(element_added < workingPointer)
+	{
+		FLUSH(element_added);
+	 	element_added += wordBytes;
+	}
+}
+
+/*
+*	This is the function use by 
+*	the bopl_update and bopl_remove
+*/
+
+	/*
+	*	This function masks the 
+	*	updating of a element of
+	*	the list, it's necessary
+	*	for abstraction purpose
+	*/
+void updateElement(int position, size_t sizeOfValue, void* new_value)
+{
+	if(listMode == FLUSH_ONLY)
+		updateElementFlush(position, sizeOfValue, new_value);
+	else
+		updateElementMechanism(position, sizeOfValue, new_value);
+}	
+
+void removeElement(Element* father, Element* new_son)
+{
+	if(listMode == FLUSH_ONLY)
+		removeElementFlush(father, new_son);
+	else
+		removeElementMechanism(father, new_son);
+}
+
+
+void updateElementMechanism(int position, size_t sizeOfValue, void* new_value)
+{
+	//TODO
+}
+
+void removeElementMechanism(Element* father, Element* new_son)
+{
+	//TODO
+}
+
+	/*
+	*	This function updates while
+	*	on the batching mecanism
+	*/		
+
+void updateElementFlush(int position, size_t sizeOfValue, void* new_value)
+{
+	Element* element = findElement(buffer, position);
+	
+	if(sizeOfValue <= element->sizeOfValue)
+	{
+		element = updateElementInList(element, sizeOfValue, new_value);
+		forceFlush(element, sizeOfValue);
+	}
+	else
+	{
+		Element* father = findElement(buffer, position - 1);
+		Element* newSon = generateElement(sizeOfValue, new_value, &workingPointer);
+		
+		newSon->next = element->next; 
+		
+		removeElementFlush(father, newSon);
+		
+		forceFlush(newSon, sizeOfValue);
+	}
+}
+
+void removeElementFlush(Element* father, Element* new_son)
+{
+	father->next = new_son;
+	FLUSH(father->next);
+}
+
+int forceFlush(Element* toFlush, size_t sizeOfValue)
+{
+	int sizeOfElement = sizeof(Element) + sizeOfValue;
+	Element* toStop = toFlush;
+		
+	while(toFlush < toStop + sizeOfElement)
+	{
+		FLUSH(toFlush);
+	 	toFlush += wordBytes;
+	}
 }
 
 
