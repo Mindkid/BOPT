@@ -1,0 +1,94 @@
+Element* buffer;
+Element* workingPointer;
+Element* savePointer;
+
+int workingPage;
+int savePage;
+
+struct bucket 
+{		
+	int position;
+	int updatePage;
+	Element* newElement;
+	bucket* next;		
+}
+
+struct pageBucket
+{
+	bucket* updatedBucket;
+	pageBucket* next; 	
+}
+
+bucket[100];
+pageBucket[100];
+
+void update(int position, size_t size, void* value)
+{
+	Element* newElement = generateElement(size, value, &workingPointer);
+	bucket* newBucket = (bucket*) malloc(sizeof(bucket));
+	
+	newBucket->newElement = newElement;
+	newBucket->position = position;
+	newBucket->updatePage = workingPage;
+	newBucket->next = NULL;
+	
+	insertBucket(position, newBucket);	
+	insertPageBucket(workingPage, newBucket);
+}
+
+
+void batchingTheFlushs(Element* nextPointer)
+{
+  	Element* toUpdatePointer = savePointer;
+  	  
+    while(toUpdatePointer <= nextPointer)
+    {
+    	FLUSH(toUpdatePointer);
+        toUpdatePointer += wordBytes;
+    }
+    savePage ++;
+    
+    pageBucket* elementsFromHash = getPageBuckets(savePage);
+    
+    while(elementsFromHash != NULL)
+    { 
+    	int fatherPosition = elementsFromHash->updatedBucket->position - 1;
+    	ELement father = findChild(fatherPostion);
+    	
+    	saveToLog(father->next, fatherPosition, savePage);
+    	
+    	father->next = elementsFromHash->updatedBucket->newElement;
+    	FLUSH(father->next);
+    	removeBucket(elementsFromHash->updatedBucket);
+    	removePageBucket(elementsFromHash);
+    	elementsFromHash = elementsFromHash->next; 	
+    }
+    
+    savePointer = toUpdatePointer;
+    offsets[0] = savePointer - buffer;
+    FLUSH(offsets);
+}
+
+
+void recover()
+{
+	if(savePointer < workingPointer)
+	{
+		int pageNumber = markedPage();
+		recoverLog(pageNumber);
+	}
+
+}
+
+void recoverLog(int pageNumber)
+{
+	Log* entry = getEntries(pageNumber);
+	while(entry != NULL)
+	{
+		Element* father = findChild(entry->fatherPosition);
+		father->next = entry->fatherNext;
+		FLUSH(father->next);
+		entry = entry->next;	
+	}
+}
+
