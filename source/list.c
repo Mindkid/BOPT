@@ -4,62 +4,72 @@
 *	This function adds an 
 *	Element to the list
 */
-Element* addElementInList(Element** head, size_t sizeOfValue, void* value, Element**  workingPointer)
-{
-	Element* toAdd = generateElement(sizeOfValue, value, workingPointer);
-    if(*head != toAdd)
-    {
-        Element* current = *head;
-        while(current->next != NULL)
-        {
-            current = current->next;
-        }
+Element* addElementInList(Element** head, Element* toAdd)
+{ 
+    
+    Element* current = *head;
+    
+    current = findElement(current, toAdd->key);
+    
+    if(current->key != toAdd->key)
         current->next = toAdd;
-    }
-    return toAdd;
+    
+    return current;
 }
 
 /*
 *	This function generates
 *	a random Element
 */
-Element* generateElement(size_t sizeOfValue, const void* value, Element** workingPointer)
+Element* generateElement(long key, size_t sizeOfValue, const void* value, Element** workingPointer)
 {
     Element* n =  *workingPointer;
 	*workingPointer += sizeof(Element);
+	n->key = key;
 	n->sizeOfValue =  sizeOfValue;
 	
 	n->value = (void*) *workingPointer;
   	memmove(n->value, value, sizeOfValue);
   	*workingPointer += sizeOfValue;
     
-    n->next = NULL;    
-
+    n->next = NULL;
+    
     return n;
 }
 
 /*
 *	This function finds the
-*	element given a position	
+*	element given a key	
 */
 
-Element* findElement(Element* head, int position_to_check)
+Element* findElement(Element* head, long key)
 {
-	int i = 0;
 	Element* result = head;
-	while(i < position_to_check)
-	{
-		if(result->next == NULL)
-			break;
-		result = result->next;
-		i++;
-	}
+	
+    while(result->next != NULL)
+    {
+        if(result->key == key)
+            break;
+	    result = result->next;  
+    }
 	return result;
 }
 
-Element* updateElementInList(Element* toUpdate, size_t sizeOfValue, void* newValue)
+Element* findFatherElement(Element* head, long sonKey)
 {
-	toUpdate->sizeOfValue =  sizeOfValue;
-	memmove(toUpdate->value, newValue,  sizeOfValue);
-	return toUpdate;
+	Element* result = head;
+	if(result->key != sonKey)
+	{
+		while(result->next != NULL)
+		{
+		    if(result->next->key == sonKey)
+			    break;
+			result = result->next;			
+		}
+	}
+
+	return result;
 }
+
+
+

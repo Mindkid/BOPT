@@ -3,19 +3,33 @@
 /*
 *	This is the buffer were
 *	data are placed, the 
-*	savepointer and the 
-*	working pointer 
+*	savepointer, the 
+*	working pointer and the
+*	header pointer that points
+*	to the head of the list 
 */
 Element* buffer = NULL;
-Element *savePointer = NULL;
-Element *workingPointer = NULL;
+Element* savePointer = NULL;
+Element* workingPointer = NULL;
+Element* headerPointer = NULL;
 
 
 /*
-*	This is the map where
-*	it's stored the offset
+*   This is the log where
+*   entries are kepted and
+*   where the name of entries
+*   are saved
 */
-int* offsets = NULL;
+LogEntry* log = NULL;
+int* numberOfEntriesLog = 0;
+
+/*
+*	This are the variables 
+*   where are stored the offset
+*/
+int* savePointerOffset = 0;
+int* workingPointerOffset = 0;
+int* headerPointerOffset = 0;
 /*
 *	This is the map where
 *	it's stored dirty pages
@@ -48,8 +62,13 @@ sem_t workingSemaphore;
 *	for the permanent files
 */
 int fileDescriptor;
-int offsetDescriptor;
+int savePointerOffsetDescriptor;
+int workingPointerOffsetDescriptor;
+int headerPointerOffsetDescriptor;
 int dirtyPagesDescriptor;
+int logEntryDescriptor;
+int numberOfEntriesLogDescriptor;
+
 
 int wordone = 0;
 
@@ -66,7 +85,6 @@ int wordone = 0;
 *	BOPL_init function
 */
 int listMode;
-
 
 
 /*
@@ -90,11 +108,11 @@ void bopl_init(int numberOfPages, int* grain, int mode)
 		/*	This two modes use 
 		*	the batching mechanism
 		*/  	
-		case UNDO_LOG_FLUSH:
+		case UNDO_LOG_MODE:
 			// Do nothing
-		case HASH_MAP_FLUSH:
+		case HASH_MAP_MODE:
 			initMechanism(grain);
-		case FLUSH_ONLY:
+		case FLUSH_ONLY_MODE:
 			listMode = mode;
 			break;
 		default:
@@ -109,15 +127,54 @@ void bopl_init(int numberOfPages, int* grain, int mode)
 	*	This functions inserts 
 	*	the new_value to the list
 	*/
-void bopl_insert(size_t sizeOfValue, void* new_value, int repetitions)
+void bopl_insert(long key, size_t sizeOfValue, void* new_value)
 {
-	int i;
-	repetitions = (repetitions <= 0)? 1 : repetitions;
-	for(i = 0; i < repetitions; i++)
+		addElement(key, sizeOfValue,  new_value);
+}
+
+	/*
+	*	This functions inserts 
+	*	the new_value to the list
+	*	given the fatherKey
+	*/
+void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new_value)
+{
+		Element* newElement = generateElement(key, sizeOfValue, new_value, &workingPointer);
+		*workingPointerOffset = workingPointer - buffer;
+
+		switch(listMode)
+		{
+			case UNDO_LOG_MODE:
+				break;
+			case HASH_MAP_MODE:
+				break;
+			case FLUSH_ONLY_MODE:
+	    		FLUSH(workingPointerOffset);
+				inplaceInsertFlush(fatherKey, newElement, sizeOfValue);
+				break;
+		}
+}
+
+    /*
+    *   This function removes
+    *   an element of the list
+    *   given a key
+    */
+void bopl_remove(long keyToRemove)
+{
+    Element* father = findFatherElement(headerPointer, keyToRemove);
+    
+    switch(listMode)
 	{
-		addElement(sizeOfValue,  new_value);
+		case UNDO_LOG_MODE:
+			break;
+		case HASH_MAP_MODE:
+			break;
+		case FLUSH_ONLY_MODE:
+			removeElementFlush(father, keyToRemove);
 	}
 }
+
 
 	/*
 	*
@@ -128,18 +185,27 @@ void bopl_insert(size_t sizeOfValue, void* new_value, int repetitions)
 	*/
 void bopl_close()
 {	
-	
-	wordone = 1;
-	sem_post(&workingSemaphore);
-	pthread_join(workingThread, NULL);
+	if(listMode != FLUSH_ONLY_MODE)
+	{
+		wordone = 1;
+		
+		sem_post(&workingSemaphore);
+		pthread_join(workingThread, NULL);
+		
+		munmap(savePointerOffset, sizeof(int));
+		munmap(dirtyPages, (numberPages/ BITS_PER_WORD));
+		
+		close(dirtyPagesDescriptor);
+		close(savePointerOffsetDescriptor);  
+	}  
 	
 	munmap(buffer, (numberPages * pageSize));
-	munmap(offsets, (NUMBER_OF_OFFSET * sizeof(int)));
-	munmap(dirtyPages, (numberPages/ BITS_PER_WORD));
+	munmap(workingPointerOffset, sizeof(int));
+	munmap(headerPointerOffset, sizeof(int));
 	
-	close(dirtyPagesDescriptor);
  	close(fileDescriptor);
- 	close(offsetDescriptor);  
+ 	close(workingPointerOffsetDescriptor);
+ 	close(headerPointerOffsetDescriptor);    
 }
 
 	/*
@@ -152,8 +218,11 @@ void bopl_close()
 	
 void bopl_crash()
 {
-	pthread_cancel(workingThread);
-	writeThrash();
+    if(listMode != FLUSH_ONLY_MODE)
+    {
+	    pthread_cancel(workingThread);
+	    writeThrash();
+	}
 	bopl_close();
 }
 
@@ -164,11 +233,25 @@ void bopl_crash()
 	*	a given position of the list
 	*/
 	
-void* bopl_lookup(int position_to_check)
+void* bopl_lookup(long key)
 {
-	Element* result = findElement(buffer, position_to_check);
-	return result->value;
+	void* value;
+	Element* result = findElement(headerPointer, key);
+	
+	value = result->value;
+	if(result->key != key)
+	{   
+	    perror("Key not found.");
+	    value = NULL;
+	}   
+	return value;
 }
+
+int bopl_update(long key, size_t sizeOfValue, void* new_value)
+{
+    updateElement(key, sizeOfValue, new_value);
+}
+
 
 /*
 *	This function are related
@@ -198,11 +281,19 @@ void initBufferMapping(int numberOfPages)
 	sizeOfFile = (numberPages * pageSize);
 	
 	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME, sizeOfFile);
+	workingPointerOffsetDescriptor = openFile(&offsetFileCreated, WORKING_POINTER_OFFSET_FILE_NAME, sizeof(int));
+	headerPointerOffsetDescriptor = openFile(&offsetFileCreated, HEADER_POINTER_OFFSET_FILE_NAME, sizeof(int));
 	
 	//buffer = (Element*) pmem_map_file(NULL, MAP_SIZE, PMEM_FILE_TMPFILE, O_TMPFILE, NULL, NULL);
 		
 	buffer = (Element*) mmap((void*)MAP_ADDR, sizeOfFile, PROT_READ | PROT_WRITE, MAP_SHARED, fileDescriptor, 0);
+	workingPointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, workingPointerOffsetDescriptor, 0);
+	headerPointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, headerPointerOffsetDescriptor, 0);
+	
 	workingPointer = buffer;
+	workingPointer += *workingPointerOffset;
+	headerPointer = buffer;
+	headerPointer += *headerPointerOffset;
 }
 	/*
 	*	This function initiates 
@@ -214,23 +305,27 @@ void initBufferMapping(int numberOfPages)
 	
 void initMechanism(int* grain)
 {
+	int sizeOfLog;
 	int offsetFileCreated = 1;
-	int sizeOfDirtyPagesFile, sizeOfOffsetFile;
-	  
-	sizeOfDirtyPagesFile = (numberPages / BITS_PER_WORD);
-	sizeOfOffsetFile = NUMBER_OF_OFFSET * sizeof(int);
-	
+	int sizeOfDirtyPagesFile = (numberPages / BITS_PER_WORD);
+    
+    sizeOfLog = numberPages * sizeof(LogEntry) * NUMBER_LOG_PER_PAGE;
+    
+	numberOfEntriesLogDescriptor =openFile(&offsetFileCreated, NUMBER_ENTRIES_FILE_NAME, sizeof(int));
+	logEntryDescriptor = openFile(&offsetFileCreated, LOG_FILE_NAME, sizeOfLog);
+		
 	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, sizeOfDirtyPagesFile);
-	offsetDescriptor = openFile(&offsetFileCreated, OFFSET_FILE_NAME, sizeOfOffsetFile);
+	savePointerOffsetDescriptor = openFile(&offsetFileCreated, SAVE_POINTER_OFFSET_FILE_NAME, sizeof(int));
 	
 	savePointer = buffer;
 	
-	offsets = (int*) mmap(0, sizeOfOffsetFile, PROT_READ | PROT_WRITE, MAP_SHARED, offsetDescriptor, 0);
-
+	savePointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, savePointerOffsetDescriptor, 0);
 	dirtyPages = (uint32_t*) mmap(0,  sizeOfDirtyPagesFile, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
+	log = (LogEntry*) mmap(0, sizeOfLog, PROT_READ | PROT_WRITE, MAP_SHARED, logEntryDescriptor, 0);
+	numberOfEntriesLog = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, numberOfEntriesLogDescriptor, 0);
 	
 	if(!offsetFileCreated)
-		correctOffsets();
+		savePointer += *savePointerOffset;
 		
 	if (savePointer == NULL)
 		handle_error("mmap");
@@ -238,8 +333,10 @@ void initMechanism(int* grain)
     sem_init(&workingSemaphore, 0, 0);
     
     if(savePointer < workingPointer)
-        markPage();
-    
+    {
+        markPages();
+        recoverFromLog();
+    }
     disablePages();
     			
     if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
@@ -254,18 +351,18 @@ void initMechanism(int* grain)
 
 void batchingTheFlushs(Element* nextPointer)
 {
-    
-    while(savePointer <= nextPointer)
+    Element* toFlush = savePointer;
+    while(toFlush <= nextPointer)
     {
-    	FLUSH(savePointer);
+    	FLUSH(toFlush);
         //pmem_flush(flushPointer, wordBytes);
-        savePointer += wordBytes;
+        toFlush += wordBytes;
     }
-    offsets[0] = savePointer - buffer;
     
-    // Because it is a 64 bits  the both 
-    // offsets are updated in this flush
-    FLUSH(offsets);
+    FLUSH(workingPointerOffset);
+    savePointer = toFlush;
+    *savePointerOffset = savePointer - buffer;
+    FLUSH(savePointerOffset);
 }
 
 void* workingBatchThread(void* grain)
@@ -293,22 +390,8 @@ void* workingBatchThread(void* grain)
 
 /*
 *	This are the functions related
-*	with the pages marking and the 
-*	offsets
+*	with the pages marking
 */
-
-	/*
-	*	This function corrects the 
-	*	pointers given the offsets
-	*/
-	
-void correctOffsets()
-{
-	int offsetSP = offsets[0];
-	int offsetWP = offsets[1];	
-	savePointer += offsetSP;
-	workingPointer += offsetWP;  
-}
 
 
 	/*
@@ -316,13 +399,17 @@ void correctOffsets()
 	* having a fault in the system
 	*/
 	
-void markPage()
+void markPages()
 {
 	int currentPage = getPointerPage(savePointer);
-	puts("Entrou aqui!!");
-	dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
-	FLUSH(dirtyPages + WORD_OFFSET(currentPage));
-	savePointer += pageSize;
+	int workingPage = getPointerPage(workingPointer);
+	while(currentPage <= workingPage)
+	{
+		dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
+		FLUSH(dirtyPages + WORD_OFFSET(currentPage));
+		savePointer += pageSize;
+		currentPage ++;
+	}
 	workingPointer = savePointer;
 }
 
@@ -338,6 +425,19 @@ int getPointerPage(Element* pointer)
 }
 
 	/*
+	*	This function return what it's
+	*	left to fill up the page 
+	*/
+
+int getLeftToFillPage(Element* pointer)
+{
+	int leftToFill = (pointer - buffer) % pageSize;
+	return leftToFill;
+}
+
+
+
+	/*
 	* This function disable the pages
 	* of the bufferusing mprotect
 	* this pages searched from the bitmap 
@@ -349,7 +449,7 @@ void disablePages()
 	int stopFlag = 0;
 	int bitArrayValue;
 	
-	for(i = 0; i < MAP_SIZE ; i++)
+	for(i = 0; i < numberPages ; i++)
 		for(j = 0; j < BITS_PER_WORD; j++)
 		{
 			bitArrayValue = (dirtyPages[i] & (1 << j));
@@ -443,44 +543,85 @@ void handler(int sig, siginfo_t *si, void *unused)
 	*/
 
 
-void addElement(size_t sizeOfValue, void* value)
+void addElement(long key, size_t sizeOfValue, void* value)
 {
-	if(listMode == FLUSH_ONLY)
-		addElementFlush(sizeOfValue, value);
+	if(listMode == FLUSH_ONLY_MODE)
+		addElementFlush(key, sizeOfValue, value);
 	else
-		addElementMechanism(sizeOfValue, value);	
+		addElementMechanism(key, sizeOfValue, value);	
 }
 
 	/*
 	*	This function inserts using
 	*	the batching mecanism
 	*/		
-void addElementMechanism(size_t sizeOfValue, void* value)
+void addElementMechanism(long key, size_t sizeOfValue, void* value)
 {
-	Element* element_added = addElementInList(&buffer, sizeOfValue, value, &workingPointer);
-	offsets[1] = workingPointer - buffer;
-	if(getPointerPage(element_added) < getPointerPage(workingPointer))
+	int lastPage =  getPointerPage(workingPointer);
+	int nextPage = getPointerPage(workingPointer + sizeof(Element) + sizeOfValue);
+	
+	if(lastPage < nextPage)
+	{
+		workingPointer += getLeftToFillPage(workingPointer);
 		sem_post(&workingSemaphore);
+	}
+	
+	Element* newElement = generateElement(key, sizeOfValue, value, &workingPointer);
+	addElementInList(&buffer, newElement);
+	*workingPointerOffset = workingPointer - buffer;		
 }
 
 	/*
 	*	This function inserts using
 	*	only flush
 	*/
-void addElementFlush(size_t sizeOfValue, void* value)
+void addElementFlush(long key, size_t sizeOfValue, void* value)
 {
-	int sizeOfElement;
+	Element* newElement = generateElement(key, sizeOfValue, value, &workingPointer);
 	
-	Element* element_added = addElementInList(&buffer, sizeOfValue, value, &workingPointer);
+	forceFlush(newElement, sizeOfValue);
 	
-	sizeOfElement = sizeof(Element) + sizeOfValue;
+	*workingPointerOffset = workingPointer - buffer;
+	FLUSH(workingPointerOffset);
 	
-	while(element_added < workingPointer)
-	{
-		FLUSH(element_added);
-	 	element_added += wordBytes;
-	}
+	Element* father = addElementInList(&headerPointer, newElement);
+	
+	if(father->next != NULL)
+        FLUSH(father->next);
 }
+
+/*
+*	This are the functions use by
+*	the bopl_inplace_insert if
+*   fatherKey NULL insert at the top
+*   of the list
+*/
+
+void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue)
+{
+    if(fatherKey == 0)
+    {
+        newElement->next = headerPointer;
+        forceFlush(newElement, sizeOfValue);
+        
+        *headerPointerOffset = newElement - buffer;
+		FLUSH(headerPointerOffset);
+		
+		headerPointer = newElement;
+    }
+    else
+    {    
+        Element* father = findElement(headerPointer, fatherKey);
+        
+        newElement->next = father->next;
+        forceFlush(newElement, sizeOfValue);
+        
+        father->next = newElement;
+        FLUSH(father->next);
+   }
+}
+
+
 
 /*
 *	This is the function use by 
@@ -493,24 +634,16 @@ void addElementFlush(size_t sizeOfValue, void* value)
 	*	the list, it's necessary
 	*	for abstraction purpose
 	*/
-void updateElement(int position, size_t sizeOfValue, void* new_value)
+void updateElement(long key, size_t sizeOfValue, void* new_value)
 {
-	if(listMode == FLUSH_ONLY)
-		updateElementFlush(position, sizeOfValue, new_value);
+	if(listMode == FLUSH_ONLY_MODE)
+		updateElementFlush(key, sizeOfValue, new_value);
 	else
-		updateElementMechanism(position, sizeOfValue, new_value);
+		updateElementMechanism(key, sizeOfValue, new_value);
 }	
 
-void removeElement(Element* father, Element* new_son)
-{
-	if(listMode == FLUSH_ONLY)
-		removeElementFlush(father, new_son);
-	else
-		removeElementMechanism(father, new_son);
-}
 
-
-void updateElementMechanism(int position, size_t sizeOfValue, void* new_value)
+void updateElementMechanism(long key, size_t sizeOfValue, void* new_value)
 {
 	//TODO
 }
@@ -525,34 +658,70 @@ void removeElementMechanism(Element* father, Element* new_son)
 	*	on the batching mecanism
 	*/		
 
-void updateElementFlush(int position, size_t sizeOfValue, void* new_value)
+void updateElementFlush(long key, size_t sizeOfValue, void* new_value)
 {
-	Element* element = findElement(buffer, position);
+	Element* father = findFatherElement(headerPointer, key);	
+	Element* newSon = generateElement(key, sizeOfValue, new_value, &workingPointer);
+	*workingPointerOffset = workingPointer - buffer;
+    FLUSH(workingPointerOffset);
 	
-	if(sizeOfValue <= element->sizeOfValue)
-	{
-		element = updateElementInList(element, sizeOfValue, new_value);
-		forceFlush(element, sizeOfValue);
+	if(headerPointer->key == key)
+	{    
+		newSon->next = father->next;
+		forceFlush(newSon, sizeOfValue);
+		
+		*headerPointerOffset = newSon - buffer;
+		FLUSH(headerPointerOffset);
+		
+		headerPointer = newSon;
 	}
 	else
-	{
-		Element* father = findElement(buffer, position - 1);
-		Element* newSon = generateElement(sizeOfValue, new_value, &workingPointer);
-		
-		newSon->next = element->next; 
-		
-		removeElementFlush(father, newSon);
-		
-		forceFlush(newSon, sizeOfValue);
-	}
+	{ 
+        if(father->next != NULL)
+        {
+            Element* newSonNext = father->next->next;
+             
+	        forceFlush(newSon, sizeOfValue);
+	        father->next = newSon;
+	        FLUSH(father->next);
+	    }
+	}		
+
 }
 
-void removeElementFlush(Element* father, Element* new_son)
+void removeElementFlush(Element* father, long keyToRemove)
 {
-	father->next = new_son;
-	FLUSH(father->next);
+
+    if(headerPointer->key == keyToRemove)
+    {
+        if(headerPointer->next == NULL)
+        {
+            *headerPointerOffset = workingPointer - buffer;    
+            FLUSH(headerPointerOffset);
+            headerPointer = workingPointer;    
+        }
+        else
+        {
+            *headerPointerOffset = headerPointer->next - buffer;
+            FLUSH(headerPointerOffset);
+            headerPointer = headerPointer->next;        
+        }    
+    }
+    else
+    {
+        if(father->next != NULL)
+        {
+            father->next = father->next->next;
+            FLUSH(father->next);
+        }
+    }
 }
 
+/*
+*	Function that it's used
+*	to force flush while in
+*	the FLUSH_ONLY_MODE mode
+*/
 int forceFlush(Element* toFlush, size_t sizeOfValue)
 {
 	int sizeOfElement = sizeof(Element) + sizeOfValue;
@@ -563,6 +732,38 @@ int forceFlush(Element* toFlush, size_t sizeOfValue)
 		FLUSH(toFlush);
 	 	toFlush += wordBytes;
 	}
+}
+
+
+/*
+*   Function that it's used
+*   to recover the structur
+*   when occurs a fault
+*/
+void recoverFromLog()
+{
+    int safedPage = getPointerPage(savePointer);
+    
+    int indexLastEntry = *numberOfEntriesLog + 1;
+    LogEntry* lastLogEntry = log + indexLastEntry;
+    
+    if(lastLogEntry->oldNext == NULL)
+        lastLogEntry -= 1;
+        
+    while(lastLogEntry->epoch_k > safedPage)
+    {
+        recoverStructure(lastLogEntry->fatherKey, lastLogEntry->oldNext); 
+        lastLogEntry -= 1;
+    }
+    
+}
+
+void recoverStructure(long fatherKey, Element* oldNext)
+{
+    Element father = findFatherElement(headerPointer, key);
+    
+    father->next = oldNext;
+    FLUSH(father->next);
 }
 
 

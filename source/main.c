@@ -2,16 +2,34 @@
 
 int main(int argc, char *argv[])
 {
-	int i;
-	char* five = (char*) malloc(sizeof(char)*4);
-	char* three = (char*) malloc(sizeof(char)*4);
-	five = "secatudo";
-	three = "tudoseca";
 	int grain = 1;
-    bopl_init(512, &grain, FLUSH_ONLY);
-    bopl_insert(sizeof(char) * 8, five, 20);
-    bopl_insert(sizeof(char) * 8, three, 22);
-    for( i = 0; i < 5; i++)
-    	printf("This is the frase: %s\n", (char*) bopl_lookup(18 + i));
-    bopl_close(123);
+	int i;
+	int* result;
+	int* a = (int*) malloc(sizeof(int));
+	*a = 8;
+
+	
+    bopl_init(512, &grain, FLUSH_ONLY_MODE);
+    
+	*a = 70;
+	//bopl_update(123, sizeof(a), a);
+	result = (int*) bopl_lookup(123);
+	
+    if(result == NULL)
+        puts("It Worked");
+    
+    *a = 60;
+    bopl_insert(235, sizeof(a), a);
+    result = (int*) bopl_lookup(235);
+	printf("This is the frase: %d\n", *result);
+    
+    bopl_remove(123);
+    result = (int*) bopl_lookup(123);
+    if(result == NULL)
+        puts("It Worked");
+
+    
+    
+    bopl_close(512);
+    
 }

@@ -6,3 +6,4 @@ main.o: main.c list.c BOPL.c
        
 clean:
 	rm *.o
+	rm ../ramdisk/*.dat

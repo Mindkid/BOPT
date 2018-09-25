@@ -23,14 +23,17 @@
 
 #define FLUSH(POINTER) asm("clflush (%0)" :: "r"(POINTER));
 
-#define NUMBER_OF_ELEMENTS 257
-
-#define MAP_SIZE 512
 #define MAP_FILE_NAME "../ramdisk/mapFile.dat"
 #define MAP_ADDR 0x7f49dcfc0000
 
-#define NUMBER_OF_OFFSET 2
-#define OFFSET_FILE_NAME "../ramdisk/offset.dat"
+#define SAVE_POINTER_OFFSET_FILE_NAME "../ramdisk/savePointerOffset.dat"
+#define WORKING_POINTER_OFFSET_FILE_NAME "../ramdisk/workingPointerOffset.dat"
+#define HEADER_POINTER_OFFSET_FILE_NAME "../ramdisk/headerPointerOffset.dat"
+
+#define NUMBER_ENTRIES_FILE_NAME "../ramdisk/entryNumber.dat"
+#define LOG_FILE_NAME "../ramdisk/log.dat"
+#define NUMBER_LOG_PER_PAGE 10
+
 
 enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define DIRTY_PAGES_FILE_NAME "../ramdisk/dirtyPages.dat"
@@ -50,9 +53,23 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 *	BOPL_init function
 */
 
-#define FLUSH_ONLY 0
-#define UNDO_LOG_FLUSH 1
-#define HASH_MAP_FLUSH 2
+#define FLUSH_ONLY_MODE 0
+#define UNDO_LOG_MODE 1
+#define HASH_MAP_MODE 2
+
+
+/*
+*   This are the structure 
+*   that corresponds to 
+*   a entry of a log
+*/
+typedef struct LogEntry
+{
+	int epoch_k;
+	long fatherKey;
+	Element* oldNext;
+}LogEntry;
+
 
 
 /*
@@ -61,8 +78,9 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 *	to use in the main function 
 */
 void bopl_init(int numberOfPages, int* grain, int mode);
-void bopl_insert(size_t sizeOfValue, void* new_value, int repetitions);
-void* bopl_lookup(int position_to_check);
+void bopl_insert(long key, size_t sizeOfValue, void* new_value);
+void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new_value);
+void* bopl_lookup(long key);
 
 /*	
 *	TODO ask Barreto (utilizar o valor?)
@@ -70,7 +88,7 @@ void* bopl_lookup(int position_to_check);
 *	Updates the value thats it's 
 *	on a given position of the list
 */
-int bopl_update(int position, size_t sizeOfValue, void* new_value);
+int bopl_update(long key, size_t sizeOfValue, void* new_value);
 
 /*	
 *	TODO ask Barreto (utilizar o valor?)
@@ -79,7 +97,7 @@ int bopl_update(int position, size_t sizeOfValue, void* new_value);
 *	on a given position of the list
 */
 
-void bopl_remove(int value_to_remove);
+void bopl_remove(long keyToRemove);
 void bopl_close();
 void bopl_crash();
 
@@ -98,10 +116,11 @@ void batchingTheFlushs(Element* nextPointer);
 */
 
 void disablePages();
-void correctOffsets();
-void markPage();
+void markPages();
 int getPointerPage(Element* pointer);
+int getLeftToFillPage(Element* pointer);
 void writeThrash();
+
 /*
 *	This are the function used by 
 *	the bopl_init
@@ -118,9 +137,18 @@ void initMechanism(int* grain);
 *	This are the functions that
 *	perform the insert of the values
 */
-void addElement(size_t sizeOfValue, void* value);
-void addElementMechanism(size_t sizeOfValue, void* value);
-void addElementFlush(size_t sizeOfValue, void* value);
+void addElement(long key, size_t sizeOfValue, void* value);
+void addElementMechanism(long key, size_t sizeOfValue, void* value);
+void addElementFlush(long key, size_t sizeOfValue, void* value);
+
+
+/*
+*	this are the functions that
+*	perform the insert inplace 
+*	of the values
+*/
+
+void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue);
 
 /*
 *	This are the functions used 
@@ -128,27 +156,36 @@ void addElementFlush(size_t sizeOfValue, void* value);
 *	values
 */
 
-void updateElement(int position, size_t sizeOfValue, void* new_value);
-void removeElement(Element* father, Element* new_son);
+void updateElement(long key, size_t sizeOfValue, void* new_value);
 
-void updateElementFlush(int position, size_t sizeOfValue, void* new_value);
-void removeElementFlush(Element* father, Element* new_son);
+void updateElementFlush(long key, size_t sizeOfValue, void* new_value);
+void removeElementFlush(Element* father, long keyToRemove);
 
-void updateElementUndoLog(int position, size_t sizeOfValue, void* new_value);
-void removeElementUndoLog(Element* father, Element* new_son);
+void updateElementUndoLog(long key, size_t sizeOfValue, void* new_value);
+void removeElementUndoLog(Element* father);
 
 
-void updateElementHashMap(int position, size_t sizeOfValue, void* new_value);
+void updateElementHashMap(long key, size_t sizeOfValue, void* new_value);
 void removeElementHashMap(Element* father, Element* new_son);
 
-void updateElementMechanism(int position, size_t sizeOfValue, void* new_value);
+void updateElementMechanism(long key, size_t sizeOfValue, void* new_value);
 void removeElementMechanism(Element* father, Element* new_son);
+
 /*
 *	Function that it's used
 *	to force flush while in
-*	the FLUSH_ONLY mode
+*	the FLUSH_ONLY_MODE mode
 */
 int forceFlush(Element* toFlush, size_t sizeOfValue);
+
+
+/*
+*   Function that it's used
+*   to recover the structur
+*   when occurs a fault
+*/
+void recoverFromLog();
+void recoverStructure(long fatherKey, Element* oldNext);
 
 /**************************************************/
 #endif

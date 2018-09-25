@@ -8,6 +8,7 @@
 
 typedef struct Element
 {
+	long key;
 	size_t sizeOfValue;
     void* value;
     struct Element* next;
@@ -15,17 +16,13 @@ typedef struct Element
 }Element;
 
 
-Element* addElementInList(Element** head, size_t sizeOfValue, void* value, Element**  workingPointer);
+Element* addElementInList(Element** head, Element* toAdd);
 
-long removeElementInList(Element** head, int value);
+Element* generateElement(long key, size_t sizeOfValue, const void* value, Element** workingPointer);
 
-Element* updateElementInList(Element* toUpdate, size_t oldValue, void* newValue);
+Element* findElement(Element* head, long key);
 
-
-Element* generateElement(size_t sizeOfValue, const void* value, Element** workingPointer);
-
-
-Element* findElement(Element* head, int position_to_check);
+Element* findFatherElement(Element* head, long sonKey);
 
 #endif
 
