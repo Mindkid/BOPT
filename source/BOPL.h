@@ -15,6 +15,7 @@
 #include <semaphore.h>
 //#include <libpmem.h>
 #include "list.h"
+#include "hashmap.h"
 
 #define BITS_ON_A_BYTE 8
 
@@ -83,7 +84,6 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 void* bopl_lookup(long key);
 
 /*	
-*	TODO ask Barreto (utilizar o valor?)
 *	
 *	Updates the value thats it's 
 *	on a given position of the list
@@ -91,7 +91,6 @@ void* bopl_lookup(long key);
 int bopl_update(long key, size_t sizeOfValue, void* new_value);
 
 /*	
-*	TODO ask Barreto (utilizar o valor?)
 *	
 *	Removes the value thats it's 
 *	on a given position of the list
@@ -137,10 +136,8 @@ void initMechanism(int* grain);
 *	This are the functions that
 *	perform the insert of the values
 */
-void addElement(long key, size_t sizeOfValue, void* value);
 void addElementMechanism(long key, size_t sizeOfValue, void* value);
 void addElementFlush(long key, size_t sizeOfValue, void* value);
-
 
 /*
 *	this are the functions that
@@ -149,6 +146,8 @@ void addElementFlush(long key, size_t sizeOfValue, void* value);
 */
 
 void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue);
+void inplaceInsertUndoLog(long fatherKey, Element* newElement, size_t sizeOfValue);
+void inplaceInsertHashMap(long fatherKey, Element* newElement, size_t sizeOfValue);
 
 /*
 *	This are the functions used 
@@ -156,20 +155,23 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue)
 *	values
 */
 
-void updateElement(long key, size_t sizeOfValue, void* new_value);
-
 void updateElementFlush(long key, size_t sizeOfValue, void* new_value);
 void removeElementFlush(Element* father, long keyToRemove);
 
 void updateElementUndoLog(long key, size_t sizeOfValue, void* new_value);
-void removeElementUndoLog(Element* father);
-
+void removeElementUndoLog(Element* father, long keyToRemove);
 
 void updateElementHashMap(long key, size_t sizeOfValue, void* new_value);
-void removeElementHashMap(Element* father, Element* new_son);
+void removeElementHashMap(long keyToRemove);
 
-void updateElementMechanism(long key, size_t sizeOfValue, void* new_value);
-void removeElementMechanism(Element* father, Element* new_son);
+/*
+*   Functions that perform 
+*   the lookup given a key
+*/
+void* normalLookup(long key);
+
+void* hashMapLookup(long key);
+
 
 /*
 *	Function that it's used
@@ -178,7 +180,6 @@ void removeElementMechanism(Element* father, Element* new_son);
 */
 int forceFlush(Element* toFlush, size_t sizeOfValue);
 
-
 /*
 *   Function that it's used
 *   to recover the structur
@@ -186,6 +187,9 @@ int forceFlush(Element* toFlush, size_t sizeOfValue);
 */
 void recoverFromLog();
 void recoverStructure(long fatherKey, Element* oldNext);
+void addLogEntry(long fatherKey, Element* oldNext);
+
+
 
 /**************************************************/
 #endif
