@@ -187,7 +187,7 @@ int forceFlush(Element* toFlush, size_t sizeOfValue);
 */
 void recoverFromLog();
 void recoverStructure(long fatherKey, Element* oldNext);
-void addLogEntry(long fatherKey, Element* oldNext);
+void addLogEntry(long fatherKey, Element* oldNext, int page);
 
 
 

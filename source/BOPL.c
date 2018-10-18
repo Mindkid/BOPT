@@ -180,7 +180,9 @@ void bopl_remove(long keyToRemove)
 {
    if(listMode ==  HASH_MAP_MODE)
    {
-   
+        Element* father = findUpdatedFatherElement(headerPointer, keyToRemove);
+        removeElementHash(father, keyToRemove);
+        //TODO Implementaro removehash
    }
    else
    {
@@ -256,9 +258,13 @@ void* bopl_lookup(long key)
 	void* value;
     
     if(listMode == HASH_MAP_MODE)
+    {
         value = hashMapLookup(key);
+    }
     else
+    {
         value = normalLookup(key);
+    }
     
 	return value;
 }
@@ -277,6 +283,8 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
             updateElementHashMap(key, sizeOfValue, new_value);
             break;
 	}
+	
+	return 0;
 }	
 
 
@@ -294,7 +302,6 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 	
 void initBufferMapping(int numberOfPages)
 {
-	int numberPages = 1;
 	int offsetFileCreated = 1;
 	
 	int sizeOfFile;
@@ -389,9 +396,29 @@ void batchingTheFlushs(Element* nextPointer)
         //pmem_flush(flushPointer, wordBytes);
         toFlush += wordBytes;
     }
-    
     FLUSH(workingPointerOffset);
     savePointer = toFlush;
+    
+    if(listMode == HASH_MAP_MODE)
+    {
+        int nextPage = getPointerPage(nextPointer);
+        while(safedPage <= nextPage)
+        {
+            Epoch_Modification* epochModification = getEpochModifications(safedPage);
+            while(epochModification != NULL)
+            {   
+                Element* father = findUpdatedElement(headerPointer, epochModification->modification->fatherKey);
+                addLogEntry(father->key, father->next, safedPage);
+                father->next = epochModification->modification->newNext;
+                if(father->next != NULL)
+                    FLUSH(father->next);
+                
+                epochModification = epochModification->next;   
+            }
+            removeEpochModifications(safedPage);
+            safedPage ++;      
+        }
+    }
     *savePointerOffset = savePointer - buffer;
     FLUSH(savePointerOffset);
 }
@@ -417,6 +444,8 @@ void* workingBatchThread(void* grain)
 			}
 		}
 	}
+	
+	return NULL;
 }
 
 /*
@@ -495,11 +524,17 @@ void disablePages()
 			if(bitArrayValue != 0)
 				mprotect(buffer + (pageSize * ((i * BITS_PER_WORD) + j)), pageSize, PROT_NONE); 
 			
-			if(!stopFlag)
+			if(!(stopFlag))
+			{
 				if(bitArrayValue != 0)
+				{
 					buffer += pageSize * ((i * BITS_PER_WORD) + j);
+				}
 				else
+				{
 					stopFlag = 1;
+				}
+			}
 		}
 }
 
@@ -635,7 +670,8 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue)
         forceFlush(newElement, sizeOfValue);
         
         father->next = newElement;
-        FLUSH(father->next);
+        if(father->next != NULL)
+            FLUSH(father->next);
    }
 }
 
@@ -644,7 +680,7 @@ void inplaceInsertUndoLog(long fatherKey, Element* newElement, size_t sizeOfValu
 {
      if(fatherKey == 0)
     {
-        addLogEntry(fatherKey, headerPointer);
+        addLogEntry(fatherKey, headerPointer,workPage);
         *headerPointerOffset = newElement - buffer;
 	    FLUSH(headerPointerOffset);
 	    headerPointer = newElement;
@@ -653,10 +689,11 @@ void inplaceInsertUndoLog(long fatherKey, Element* newElement, size_t sizeOfValu
     {    
         Element* father = findElement(headerPointer, fatherKey);
         newElement->next = father->next;
-        addLogEntry(fatherKey, father->next);
+        addLogEntry(fatherKey, father->next, workPage);
         
         father->next = newElement;
-        FLUSH(father->next);
+        if(father->next != NULL)
+            FLUSH(father->next);
    }
 }
 
@@ -680,7 +717,7 @@ void updateElementUndoLog(long key, size_t sizeOfValue, void* new_value)
 	{    
 		newSon->next = father->next;
 		
-		addLogEntry(father->key, headerPointer);
+		addLogEntry(father->key, headerPointer, workPage);
 		 
 		*headerPointerOffset = newSon - buffer;
 		FLUSH(headerPointerOffset);
@@ -693,8 +730,9 @@ void updateElementUndoLog(long key, size_t sizeOfValue, void* new_value)
             Element* newSonNext = father->next->next;
             newSon->next = newSonNext;
             
-	        addLogEntry(father->key, father->next);
+	        addLogEntry(father->key, father->next, workPage);
 	        father->next = newSon;
+	        
 	        FLUSH(father->next);
 	    }
 	    else
@@ -708,7 +746,7 @@ void removeElementUndoLog(Element* father, long keyToRemove)
 {
     if(headerPointer->key == keyToRemove)
     {
-        addLogEntry(headerPointer->key, headerPointer);
+        addLogEntry(headerPointer->key, headerPointer, workPage);
         if(headerPointer->next == NULL)
         {
             *headerPointerOffset = workingPointer - buffer;    
@@ -726,9 +764,10 @@ void removeElementUndoLog(Element* father, long keyToRemove)
     {
         if(father->next != NULL)
         {
-            addLogEntry(father->key, father->next);
+            addLogEntry(father->key, father->next, workPage);
             father->next = father->next->next;
-            FLUSH(father->next);
+            if(father->next != NULL)
+                FLUSH(father->next);
         }
         else
 	    {
@@ -818,10 +857,11 @@ void updateElementFlush(long key, size_t sizeOfValue, void* new_value)
         if(father->next != NULL)
         {
             Element* newSonNext = father->next->next;
-             
+            newSon->next = newSonNext; 
 	        forceFlush(newSon, sizeOfValue);
 	        father->next = newSon;
-	        FLUSH(father->next);
+	        if(father->next != NULL)
+                FLUSH(father->next);
 	    }
         else
 	    {
@@ -854,7 +894,8 @@ void removeElementFlush(Element* father, long keyToRemove)
         if(father->next != NULL)
         {
             father->next = father->next->next;
-            FLUSH(father->next);
+            if(father->next != NULL)
+                FLUSH(father->next);
         }
         else
 	    {
@@ -913,6 +954,8 @@ int forceFlush(Element* toFlush, size_t sizeOfValue)
 		FLUSH(toFlush);
 	 	toFlush += wordBytes;
 	}
+	
+	return 1;
 }
 
 
@@ -954,19 +997,22 @@ void recoverStructure(long fatherKey, Element* oldNext)
     FLUSH(father->next);
 }
 
-void addLogEntry(long fatherKey, Element* oldNext)
+void addLogEntry(long fatherKey, Element* oldNext, int page)
 {
-    logEntries->epoch_k = workPage;
-    FLUSH(logEntries->epoch_k);
+    LogEntry* entry = logEntries;
     
-    logEntries->fatherKey = fatherKey;
-    FLUSH(logEntries->fatherKey);
-    
-    logEntries->oldNext = oldNext;
-    FLUSH(logEntries->oldNext);
+    entry->epoch_k = page;
+    entry->fatherKey = fatherKey;
+    entry->oldNext = oldNext;
     
     logEntries += sizeof(LogEntry);
     
+    while(entry < logEntries)
+    {
+        FLUSH(entry);
+        entry += wordBytes;
+    }
+
     *numberOfEntriesLog += 1;
     FLUSH(numberOfEntriesLog);
 }

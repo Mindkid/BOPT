@@ -49,7 +49,9 @@ Element* findElement(Element* head, long key)
     while(result->next != NULL)
     {
         if(result->key == key)
+        {
             break;
+	    }
 	    result = result->next;  
     }
 	return result;
@@ -63,7 +65,9 @@ Element* findFatherElement(Element* head, long sonKey)
 		while(result->next != NULL)
 		{
 		    if(result->next->key == sonKey)
+		    {
 			    break;
+			}
 			result = result->next;			
 		}
 	}

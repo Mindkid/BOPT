@@ -1,25 +1,13 @@
 #include "hashmap.h"
 
 /*
-*   INIT HASHMAP
+*   This function inits the 
+*   hash and epoch buffer
 */
 void initHashMode()
 {
-    int i;
-
     hashOfModifications = (Modification*) malloc(sizeof(Modification) * NUMBER_OF_BUCKETS);
-    listOfModificationsInEpoch = (Epoch_Modification*) malloc(sizeof(Epoch_Modification) * MAX_EPOCHS);
-    
-    for(i = 0; i < NUMBER_OF_BUCKETS; i++)
-    {
-        hashOfModifications = NULL;
-        hashOfModifications ++;
-    }    
-    for(i = 0; i < MAX_EPOCHS; i++)
-    {
-        listOfModificationsInEpoch = NULL;
-        listOfModificationsInEpoch ++;
-    }
+    listOfModificationsInEpoch = (Epoch_Modification*) malloc(sizeof(Epoch_Modification) * MAX_EPOCHS);  
 }
 
 /*
@@ -30,10 +18,11 @@ void insertModification(int epoch, long fatherKey, Modification* newModif)
     int hashCode = fatherKey % NUMBER_OF_BUCKETS;
     Modification* hashHead = hashOfModifications + hashCode;
     
-    if(hashHead == NULL)
+    if(hashHead->newNext == NULL)
     {
-        newModif->previous =  hashHead;
-        hashHead = newModif;
+        hashHead->epoch_k = newModif->epoch_k;
+        hashHead->fatherKey = newModif->fatherKey;
+        hashHead->newNext = newModif->newNext;
     }
     else
     {
@@ -55,7 +44,7 @@ void insertModification(int epoch, long fatherKey, Modification* newModif)
     
     Epoch_Modification* epochModif = listOfModificationsInEpoch + epoch_position;
     
-    if(epochModif != NULL)
+    if(epochModif->modification != NULL)
     {
         while(epochModif->next != NULL)
         {
@@ -65,7 +54,7 @@ void insertModification(int epoch, long fatherKey, Modification* newModif)
     }
     else
     {
-        epochModif = newEpochModif;
+        epochModif->modification = newEpochModif->modification;
     }
     
 }
@@ -94,16 +83,22 @@ void* removeEpochModifications(int epoch)
     Epoch_Modification* epochRemove = listOfModificationsInEpoch + epoch_position;
     
     Epoch_Modification* removeModifications = epochRemove;
+    Epoch_Modification* freeModification;
     while(removeModifications != NULL)
     {
         Modification* newModif = removeModifications->modification;
-        newModif->previous->next = newModif->next;    
+        if(newModif->previous != NULL)
+            newModif->previous->next = newModif->next;    
         free(newModif);
-        
+        freeModification = removeModifications;
         removeModifications = removeModifications->next;
+        
+        free(freeModification);
     }
-    epochRemove = NULL;
+    epochRemove->next = NULL ;
+    epochRemove->modification = NULL;
     
+    return epochRemove;
 }
 
 
@@ -119,7 +114,9 @@ Element* getNewNextElement(long fatherKey)
     while(hashHead != NULL)
     {
         if(hashHead->fatherKey == fatherKey)
+        {
             result = hashHead->newNext;
+        }
         hashHead = hashHead->next;
     }
     
@@ -130,7 +127,9 @@ Element* getHead(Element* head)
 {
     Element* result = getNewNextElement(0);
     if(result == NULL)
+    {
         result = head;
+    }
     return result;
 }
 
@@ -138,7 +137,9 @@ Element* getNextOf(Element* father)
 {
     Element* result = getNewNextElement(father->key);
     if(result == NULL)
+    {
         result = father->next;
+    }
     return result;
 }
 
@@ -152,9 +153,9 @@ Element* addElementInListHash(Element** head, Element* toAdd, int epoch)
     
     current = findUpdatedElement(current, toAdd->key);
     
-    if(current->key != toAdd->key)
-        addModification(epoch, current->key, toAdd);
-        
+    if(current != toAdd)
+        current->next = toAdd;
+     
     return current;
 }
 
@@ -167,7 +168,9 @@ Element* findUpdatedElement(Element* head, long key)
     while(nextElement != NULL)
     {
         if(trueHead->key == key)
+        {
             break;
+	    }
 	    trueHead = nextElement;
 	    nextElement = getNextOf(trueHead);
     }
@@ -184,9 +187,11 @@ Element* findUpdatedFatherElement(Element* head, long sonKey)
 	{
         while(nextElement != NULL)
         {
-             if(nextElement->key == sonKey)
-			    break;
-	        trueHead = nextElement;
+            if(nextElement->key == sonKey)
+            {
+		        break;
+	        }
+            trueHead = nextElement;
 	        nextElement = getNextOf(trueHead);
         }
     }     

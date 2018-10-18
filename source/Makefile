@@ -1,8 +1,8 @@
-CC=gcc -g
-CFLAGS=-lpthread
+CC=gcc -D_FILE_OFFSET_BITS=64 -g -Wall
+CFLAGS=-lpthread 
 
 main.o: main.c list.c BOPL.c hashmap.c
-	$(CC)  BOPL.c list.c  hashmap.c main.c -o main.o $(CFLAGS)
+	$(CC)  BOPL.c list.c  hashmap.c main.c -o  main.o $(CFLAGS)
        
 clean:
 	rm *.o
