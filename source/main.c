@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     result = (int*) bopl_lookup(123);
     if(result == NULL)
         puts("It Worked");
-    
+        
     result = (int*) bopl_lookup(80);
     if(result == NULL)
         puts("It Worked");

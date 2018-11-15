@@ -309,7 +309,6 @@ void initBufferMapping(int numberOfPages)
 	pageSize = sysconf(_SC_PAGE_SIZE);
 	wordBytes = sysconf(_SC_WORD_BIT) / BITS_ON_A_BYTE;
    
-   	
 	numberPages = (numberOfPages > 0)? numberOfPages : numberPages;
 	
 	sizeOfFile = (numberPages * pageSize);
@@ -1027,6 +1026,7 @@ void addLogEntry(long fatherKey, Element* oldNext, int page)
 
 void checkThreshold(size_t sizeOfValue)
 {
+    //Se calhar não é preciso
 	int lastPage =  getPointerPage(workingPointer);
 	int nextPage = getPointerPage(workingPointer + sizeof(Element) + sizeOfValue);
 	
