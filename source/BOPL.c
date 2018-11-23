@@ -180,8 +180,8 @@ void bopl_remove(long keyToRemove)
 {
    if(listMode ==  HASH_MAP_MODE)
    {
-        Element* father = findUpdatedFatherElement(headerPointer, keyToRemove);
-        removeElementHash(father, keyToRemove);
+        //Element* father = findUpdatedFatherElement(headerPointer, keyToRemove);
+        //removeElementHash(father, keyToRemove);
         //TODO Implementaro removehash
    }
    else

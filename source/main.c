@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 	*a = 8;
 
 	
-    bopl_init(512, &grain, HASH_MAP_MODE);
+    bopl_init(512, &grain, FLUSH_ONLY_MODE);
     
 	*a = 400;
 	bopl_insert(80, sizeof(a), a);
