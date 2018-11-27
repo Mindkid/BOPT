@@ -42,7 +42,7 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 
 /*
-*	The List can be operated in 
+*	The List can be operated in
 *	three modes:
 *
 *	0 - Without Mechanism Flush Only
@@ -50,7 +50,7 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 *	2 - With Mechanism HashMap Flush
 *
 *
-*	The mode it's configurated in the 
+*	The mode it's configurated in the
 *	BOPL_init function
 */
 
@@ -60,8 +60,8 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 
 
 /*
-*   This are the structure 
-*   that corresponds to 
+*   This are the structure
+*   that corresponds to
 *   a entry of a log
 */
 typedef struct LogEntry
@@ -72,27 +72,47 @@ typedef struct LogEntry
 }LogEntry;
 
 
+/*
+*	This is the buffer were
+*	data are placed, the
+*	savepointer, the
+*	working pointer and the
+*	header pointer that points
+*	to the head of the list
+*/
+Element* buffer = NULL;
+Element* savePointer = NULL;
+Element* workingPointer = NULL;
+Element* headerPointer = NULL;
 
 /*
-*	This are the function of the 
+*	This are the variables
+*   where are stored the offset
+*/
+int* savePointerOffset = 0;
+int* workingPointerOffset = 0;
+int* headerPointerOffset = 0;
+
+/*
+*	This are the function of the
 *	librarry BOPL this are the ones
-*	to use in the main function 
+*	to use in the main function
 */
 void bopl_init(int numberOfPages, int* grain, int mode);
 void bopl_insert(long key, size_t sizeOfValue, void* new_value);
 void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new_value);
 void* bopl_lookup(long key);
 
-/*	
-*	
-*	Updates the value thats it's 
+/*
+*
+*	Updates the value thats it's
 *	on a given position of the list
 */
 int bopl_update(long key, size_t sizeOfValue, void* new_value);
 
-/*	
-*	
-*	Removes the value thats it's 
+/*
+*
+*	Removes the value thats it's
 *	on a given position of the list
 */
 
@@ -110,7 +130,7 @@ void batchingTheFlushs(Element* nextPointer);
 
 /*
 *	This are the functions related
-*	with the pages marking and the 
+*	with the pages marking and the
 *	offsets
 */
 
@@ -121,7 +141,7 @@ int getLeftToFillPage(Element* pointer);
 void writeThrash();
 
 /*
-*	This are the function used by 
+*	This are the function used by
 *	the bopl_init
 */
 
@@ -141,7 +161,7 @@ void addElementFlush(long key, size_t sizeOfValue, void* value);
 
 /*
 *	this are the functions that
-*	perform the insert inplace 
+*	perform the insert inplace
 *	of the values
 */
 
@@ -150,8 +170,8 @@ void inplaceInsertUndoLog(long fatherKey, Element* newElement, size_t sizeOfValu
 void inplaceInsertHashMap(long fatherKey, Element* newElement, size_t sizeOfValue);
 
 /*
-*	This are the functions used 
-*	to perform the update of the 
+*	This are the functions used
+*	to perform the update of the
 *	values
 */
 
@@ -165,7 +185,7 @@ void updateElementHashMap(long key, size_t sizeOfValue, void* new_value);
 void removeElementHashMap(long keyToRemove);
 
 /*
-*   Functions that perform 
+*   Functions that perform
 *   the lookup given a key
 */
 void* normalLookup(long key);

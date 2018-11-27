@@ -1,20 +1,6 @@
 #include "BOPL.h"
 
 /*
-*	This is the buffer were
-*	data are placed, the 
-*	savepointer, the 
-*	working pointer and the
-*	header pointer that points
-*	to the head of the list 
-*/
-Element* buffer = NULL;
-Element* savePointer = NULL;
-Element* workingPointer = NULL;
-Element* headerPointer = NULL;
-
-
-/*
 *   This is the log where
 *   entries are kepted and
 *   where the name of entries
@@ -24,13 +10,7 @@ LogEntry* logEntries = NULL;
 
 int* numberOfEntriesLog = 0;
 
-/*
-*	This are the variables 
-*   where are stored the offset
-*/
-int* savePointerOffset = 0;
-int* workingPointerOffset = 0;
-int* headerPointerOffset = 0;
+
 /*
 *	This is the map where
 *	it's stored dirty pages
@@ -39,10 +19,9 @@ uint32_t* dirtyPages = NULL;
 
 
 /*
-*   Represnts how many are 
+*   Represnts how many are
 *   working pages and savePages
 */
-
 int workPage;
 int safedPage;
 
@@ -56,12 +35,12 @@ long wordBytes = 0;
 long numberPages = 1;
 /*
 *	This is the working thread
-*	this thread do the batchs 
+*	this thread do the batchs
 *	and waits for the semaphore
 */
 pthread_t workingThread;
 
-/*	
+/*
 *	This are the semaphores for the
 *	monitoring and te batching threads
 */
@@ -83,7 +62,7 @@ int numberOfEntriesLogDescriptor;
 int wordone = 0;
 
 /*
-*	The List can be operated in 
+*	The List can be operated in
 *	three mods:
 *
 *	0 - Without Mechanism Flush Only
@@ -91,33 +70,33 @@ int wordone = 0;
 *	2 - With Mechanism HashMap Flush
 *
 *
-*	The mode it's configurated in the 
+*	The mode it's configurated in the
 *	BOPL_init function
 */
 int listMode;
 
 void checkThreshold(size_t sizeOfValue);
 /*
-*	This are the function of the 
+*	This are the function of the
 *	librarry BOPL this are the ones
-*	to use in the main function 
+*	to use in the main function
 */
 
 	/*
 	* This function it's the init
 	* function, it happens when the
-	* program starts properlly 
+	* program starts properlly
 	*/
-	
+
 void bopl_init(int numberOfPages, int* grain, int mode)
 {
 	initBufferMapping(numberOfPages);
-	
+
 	switch(mode)
 	{
-		/*	This two modes use 
+		/*	This two modes use
 		*	the batching mechanism
-		*/  	
+		*/
 		case HASH_MAP_MODE:
 			initHashMode();
 		case UNDO_LOG_MODE:
@@ -128,13 +107,13 @@ void bopl_init(int numberOfPages, int* grain, int mode)
 		default:
 			perror("Please see the correct modes at BOPL.h\n");
 			exit(-1);
-			break;		
+			break;
 	}
 
 }
 
 	/*
-	*	This functions inserts 
+	*	This functions inserts
 	*	the value to the list
 	*/
 void bopl_insert(long key, size_t sizeOfValue, void* value)
@@ -142,20 +121,20 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 	if(listMode == FLUSH_ONLY_MODE)
 		addElementFlush(key, sizeOfValue, value);
 	else
-		addElementMechanism(key, sizeOfValue, value);	
+		addElementMechanism(key, sizeOfValue, value);
 }
 
 	/*
-	*	This functions inserts 
+	*	This functions inserts
 	*	the new_value to the list
 	*	given the fatherKey
 	*/
 void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new_value)
 {
-       
-        Element* newElement = generateElement(key, sizeOfValue, new_value, &workingPointer);
-		checkThreshold(sizeOfValue);    
-        *workingPointerOffset = workingPointer - buffer;
+
+    Element* newElement = generateElement(key, sizeOfValue, new_value, &workingPointer);
+		checkThreshold(sizeOfValue);
+    *workingPointerOffset = workingPointer - buffer;
 		switch(listMode)
 		{
 			case UNDO_LOG_MODE:
@@ -186,13 +165,13 @@ void bopl_remove(long keyToRemove)
    }
    else
    {
-        Element* father = findFatherElement(headerPointer, keyToRemove);
-        if(listMode == FLUSH_ONLY_MODE)
-			removeElementFlush(father, keyToRemove);
-		else
-		    removeElementUndoLog(father, keyToRemove);      
-   }   
-   
+		  Element* father = findFatherElement(headerPointer, keyToRemove);
+    	if(listMode == FLUSH_ONLY_MODE)
+				removeElementFlush(father, keyToRemove);
+			else
+	    	removeElementUndoLog(father, keyToRemove);
+   }
+
 }
 
 
@@ -204,38 +183,38 @@ void bopl_remove(long keyToRemove)
 	*	and removes the mappings
 	*/
 void bopl_close()
-{	
+{
 	if(listMode != FLUSH_ONLY_MODE)
 	{
 		wordone = 1;
-		
+
 		sem_post(&workingSemaphore);
 		pthread_join(workingThread, NULL);
-		
+
 		munmap(savePointerOffset, sizeof(int));
 		munmap(dirtyPages, (numberPages/ BITS_PER_WORD));
-		
+
 		close(dirtyPagesDescriptor);
-		close(savePointerOffsetDescriptor);  
-	}  
-	
+		close(savePointerOffsetDescriptor);
+	}
+
 	munmap(buffer, (numberPages * pageSize));
 	munmap(workingPointerOffset, sizeof(int));
 	munmap(headerPointerOffset, sizeof(int));
-	
+
  	close(fileDescriptor);
  	close(workingPointerOffsetDescriptor);
- 	close(headerPointerOffsetDescriptor);    
+ 	close(headerPointerOffsetDescriptor);
 }
 
 	/*
 	*
-	*	This function simulates 
+	*	This function simulates
 	*	a crash of the machine,
 	*	in this case kills the
 	*	thread that does the flush's
 	*/
-	
+
 void bopl_crash()
 {
     if(listMode != FLUSH_ONLY_MODE)
@@ -248,15 +227,15 @@ void bopl_crash()
 
 	/*
 	*	TODO ask Barreto if ok?
-	*	
+	*
 	*	This lookups the value of
 	*	a given position of the list
 	*/
-	
+
 void* bopl_lookup(long key)
 {
 	void* value;
-    
+
     if(listMode == HASH_MAP_MODE)
     {
         value = hashMapLookup(key);
@@ -265,7 +244,7 @@ void* bopl_lookup(long key)
     {
         value = normalLookup(key);
     }
-    
+
 	return value;
 }
 
@@ -283,101 +262,101 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
             updateElementHashMap(key, sizeOfValue, new_value);
             break;
 	}
-	
+
 	return 0;
-}	
+}
 
 
 /*
 *	This function are related
-*	to the implementation 
-*	of the mechanism 
+*	to the implementation
+*	of the mechanism
 */
 
 	/*
-	*	This function initiates 
-	*	the buffer where the 
-	*	informations it's stored 
+	*	This function initiates
+	*	the buffer where the
+	*	informations it's stored
 	*/
-	
+
 void initBufferMapping(int numberOfPages)
 {
 	int offsetFileCreated = 1;
-	
+
 	int sizeOfFile;
-	
+
 	pageSize = sysconf(_SC_PAGE_SIZE);
 	wordBytes = sysconf(_SC_WORD_BIT) / BITS_ON_A_BYTE;
-   
+
 	numberPages = (numberOfPages > 0)? numberOfPages : numberPages;
-	
+
 	sizeOfFile = (numberPages * pageSize);
-	
+
 	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME, sizeOfFile);
 	workingPointerOffsetDescriptor = openFile(&offsetFileCreated, WORKING_POINTER_OFFSET_FILE_NAME, sizeof(int));
 	headerPointerOffsetDescriptor = openFile(&offsetFileCreated, HEADER_POINTER_OFFSET_FILE_NAME, sizeof(int));
-	
+
 	//buffer = (Element*) pmem_map_file(NULL, MAP_SIZE, PMEM_FILE_TMPFILE, O_TMPFILE, NULL, NULL);
-		
+
 	buffer = (Element*) mmap((void*)MAP_ADDR, sizeOfFile, PROT_READ | PROT_WRITE, MAP_SHARED, fileDescriptor, 0);
 	workingPointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, workingPointerOffsetDescriptor, 0);
 	headerPointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, headerPointerOffsetDescriptor, 0);
-	
+
 	workingPointer = buffer;
 	workingPointer += *workingPointerOffset;
 	headerPointer = buffer;
 	headerPointer += *headerPointerOffset;
 }
 	/*
-	*	This function initiates 
-	*	the mechanism that it's 
-	*	used at the second and 
-	*	the third mode of the 
+	*	This function initiates
+	*	the mechanism that it's
+	*	used at the second and
+	*	the third mode of the
 	*	program
 	*/
-	
+
 void initMechanism(int* grain)
 {
 	int sizeOfLog;
 	int offsetFileCreated = 1;
 	int sizeOfDirtyPagesFile = (numberPages / BITS_PER_WORD);
-    
+
     sizeOfLog = numberPages * sizeof(LogEntry) * NUMBER_LOG_PER_PAGE;
-    
+
 	numberOfEntriesLogDescriptor =openFile(&offsetFileCreated, NUMBER_ENTRIES_FILE_NAME, sizeof(int));
 	logEntryDescriptor = openFile(&offsetFileCreated, LOG_FILE_NAME, sizeOfLog);
-		
+
 	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, sizeOfDirtyPagesFile);
 	savePointerOffsetDescriptor = openFile(&offsetFileCreated, SAVE_POINTER_OFFSET_FILE_NAME, sizeof(int));
-	
+
 	savePointer = buffer;
-	
+
 	savePointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, savePointerOffsetDescriptor, 0);
 	dirtyPages = (uint32_t*) mmap(0,  sizeOfDirtyPagesFile, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
 	logEntries = (LogEntry*) mmap(0, sizeOfLog, PROT_READ | PROT_WRITE, MAP_SHARED, logEntryDescriptor, 0);
 	numberOfEntriesLog = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, numberOfEntriesLogDescriptor, 0);
-	
+
 	if(!offsetFileCreated)
 		savePointer += *savePointerOffset;
-	
-	
+
+
 	safedPage = getPointerPage(savePointer);
 	workPage = getPointerPage(workingPointer);
-	
+
 	if (savePointer == NULL)
 		handle_error("mmap");
-    
+
     sem_init(&workingSemaphore, 0, 0);
-    
+
     if(savePointer < workingPointer)
     {
         markPages();
         recoverFromLog();
     }
     disablePages();
-    			
+
     if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
-		handle_error("pthreadCreate"); 
+		handle_error("pthreadCreate");
 }
 
 
@@ -397,7 +376,7 @@ void batchingTheFlushs(Element* nextPointer)
     }
     FLUSH(workingPointerOffset);
     savePointer = toFlush;
-    
+
     if(listMode == HASH_MAP_MODE)
     {
         int nextPage = getPointerPage(nextPointer);
@@ -405,17 +384,17 @@ void batchingTheFlushs(Element* nextPointer)
         {
             Epoch_Modification* epochModification = getEpochModifications(safedPage);
             while(epochModification != NULL)
-            {   
+            {
                 Element* father = findUpdatedElement(headerPointer, epochModification->modification->fatherKey);
                 addLogEntry(father->key, father->next, safedPage);
                 father->next = epochModification->modification->newNext;
                 if(father->next != NULL)
                     FLUSH(father->next);
-                
-                epochModification = epochModification->next;   
+
+                epochModification = epochModification->next;
             }
             removeEpochModifications(safedPage);
-            safedPage ++;      
+            safedPage ++;
         }
     }
     *savePointerOffset = savePointer - buffer;
@@ -425,11 +404,11 @@ void batchingTheFlushs(Element* nextPointer)
 void* workingBatchThread(void* grain)
 {
 	int granularity = *((int*) grain);
-	
+
 	granularity = (granularity <= 0)?  1 : granularity;
-	
+
 	int page_granularity = pageSize * granularity;
-	
+
 	while(!sem_wait(&workingSemaphore))
 	{
 		if(workingPointer >= savePointer + page_granularity)
@@ -443,7 +422,7 @@ void* workingBatchThread(void* grain)
 			}
 		}
 	}
-	
+
 	return NULL;
 }
 
@@ -454,15 +433,15 @@ void* workingBatchThread(void* grain)
 
 
 	/*
-	* This funtion occours after 
+	* This funtion occours after
 	* having a fault in the system
 	*/
-	
+
 void markPages()
 {
 	int currentPage = safedPage;
 	int workingPage = workPage;
-	
+
 	while(currentPage <= workingPage)
 	{
 		dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
@@ -470,19 +449,19 @@ void markPages()
 		savePointer += pageSize;
 		currentPage ++;
 	}
-	
+
 	workingPointer = savePointer;
-	
+
 	*workingPointerOffset = workingPointer - buffer;
 	FLUSH(workingPointerOffset);
-	
+
 	*savePointerOffset = savePointer - buffer;
 	FLUSH(savePointerOffset);
 }
 
 	/*
-	*	This function return the page 
-	*	of a given pointer 
+	*	This function return the page
+	*	of a given pointer
 	*/
 
 int getPointerPage(Element* pointer)
@@ -493,7 +472,7 @@ int getPointerPage(Element* pointer)
 
 	/*
 	*	This function return what it's
-	*	left to fill up the page 
+	*	left to fill up the page
 	*/
 
 int getLeftToFillPage(Element* pointer)
@@ -507,22 +486,22 @@ int getLeftToFillPage(Element* pointer)
 	/*
 	* This function disable the pages
 	* of the bufferusing mprotect
-	* this pages searched from the bitmap 
+	* this pages searched from the bitmap
 	*/
-	
+
 void disablePages()
 {
 	int i, j;
 	int stopFlag = 0;
 	int bitArrayValue;
-	
+
 	for(i = 0; i < numberPages ; i++)
 		for(j = 0; j < BITS_PER_WORD; j++)
 		{
 			bitArrayValue = (dirtyPages[i] & (1 << j));
 			if(bitArrayValue != 0)
-				mprotect(buffer + (pageSize * ((i * BITS_PER_WORD) + j)), pageSize, PROT_NONE); 
-			
+				mprotect(buffer + (pageSize * ((i * BITS_PER_WORD) + j)), pageSize, PROT_NONE);
+
 			if(!(stopFlag))
 			{
 				if(bitArrayValue != 0)
@@ -548,7 +527,7 @@ void writeThrash()
 }
 
 /*
-*	This are the function used by 
+*	This are the function used by
 *	the bopl_init
 */
 
@@ -562,7 +541,7 @@ int openFile(int* created, char* fileName, long size)
 {
 	int fd;
 	if(access(fileName, F_OK) != -1)
-	{ 
+	{
     	fd = open(fileName, O_RDWR );
     	*created = 0;
 	}
@@ -596,22 +575,22 @@ void handler(int sig, siginfo_t *si, void *unused)
 {
 	switch(sig)
 	{
- 		case SIGBUS:	
+ 		case SIGBUS:
  			break;
 		case SIGSEGV:
-			break; 	
+			break;
 	}
 }
 
 /*
-*	This is the function use by 
+*	This is the function use by
 *	the bopl_insert
 */
 
 	/*
 	*	This function inserts using
 	*	the batching mecanism
-	*/		
+	*/
 void addElementMechanism(long key, size_t sizeOfValue, void* value)
 {
 	checkThreshold(sizeOfValue);
@@ -630,14 +609,14 @@ void addElementMechanism(long key, size_t sizeOfValue, void* value)
 void addElementFlush(long key, size_t sizeOfValue, void* value)
 {
 	Element* newElement = generateElement(key, sizeOfValue, value, &workingPointer);
-	
+
 	forceFlush(newElement, sizeOfValue);
-	
+
 	*workingPointerOffset = workingPointer - buffer;
 	FLUSH(workingPointerOffset);
-	
+
 	Element* father = addElementInList(&headerPointer, newElement);
-	
+
 	if(father->next != NULL)
         FLUSH(father->next);
 }
@@ -655,19 +634,19 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue)
     {
         newElement->next = headerPointer;
         forceFlush(newElement, sizeOfValue);
-        
+
         *headerPointerOffset = newElement - buffer;
 		FLUSH(headerPointerOffset);
-		
+
 		headerPointer = newElement;
     }
     else
-    {    
+    {
         Element* father = findElement(headerPointer, fatherKey);
-        
+
         newElement->next = father->next;
         forceFlush(newElement, sizeOfValue);
-        
+
         father->next = newElement;
         if(father->next != NULL)
             FLUSH(father->next);
@@ -679,17 +658,17 @@ void inplaceInsertUndoLog(long fatherKey, Element* newElement, size_t sizeOfValu
 {
      if(fatherKey == 0)
     {
-        addLogEntry(fatherKey, headerPointer,workPage);
-        *headerPointerOffset = newElement - buffer;
+    	addLogEntry(fatherKey, headerPointer,workPage);
+      *headerPointerOffset = newElement - buffer;
 	    FLUSH(headerPointerOffset);
 	    headerPointer = newElement;
     }
     else
-    {    
+    {
         Element* father = findElement(headerPointer, fatherKey);
         newElement->next = father->next;
         addLogEntry(fatherKey, father->next, workPage);
-        
+
         father->next = newElement;
         if(father->next != NULL)
             FLUSH(father->next);
@@ -701,37 +680,37 @@ void inplaceInsertHashMap(long fatherKey, Element* newElement, size_t sizeOfValu
     addModification(workPage, fatherKey, newElement);
 }
 /*
-*	This is the function use by 
+*	This is the function use by
 *	the bopl_update and bopl_remove
 */
 
 void updateElementUndoLog(long key, size_t sizeOfValue, void* new_value)
 {
     Element* father = findFatherElement(headerPointer, key);
-	checkThreshold(sizeOfValue);	
+	checkThreshold(sizeOfValue);
 	Element* newSon = generateElement(key, sizeOfValue, new_value, &workingPointer);
 	*workingPointerOffset = workingPointer - buffer;
-	
+
 	if(headerPointer->key == key)
-	{    
+	{
 		newSon->next = father->next;
-		
+
 		addLogEntry(father->key, headerPointer, workPage);
-		 
+
 		*headerPointerOffset = newSon - buffer;
 		FLUSH(headerPointerOffset);
 		headerPointer = newSon;
 	}
 	else
-	{ 
+	{
         if(father->next != NULL)
         {
             Element* newSonNext = father->next->next;
             newSon->next = newSonNext;
-            
+
 	        addLogEntry(father->key, father->next, workPage);
 	        father->next = newSon;
-	        
+
 	        FLUSH(father->next);
 	    }
 	    else
@@ -748,16 +727,16 @@ void removeElementUndoLog(Element* father, long keyToRemove)
         addLogEntry(headerPointer->key, headerPointer, workPage);
         if(headerPointer->next == NULL)
         {
-            *headerPointerOffset = workingPointer - buffer;    
+            *headerPointerOffset = workingPointer - buffer;
             FLUSH(headerPointerOffset);
-            headerPointer = workingPointer;    
+            headerPointer = workingPointer;
         }
         else
         {
             *headerPointerOffset = headerPointer->next - buffer;
             FLUSH(headerPointerOffset);
-            headerPointer = headerPointer->next;        
-        }    
+            headerPointer = headerPointer->next;
+        }
     }
     else
     {
@@ -779,23 +758,23 @@ void removeElementUndoLog(Element* father, long keyToRemove)
 void updateElementHashMap(long key, size_t sizeOfValue, void* new_value)
 {
     Element* father = findUpdatedFatherElement(headerPointer, key);
-	checkThreshold(sizeOfValue);	
+	checkThreshold(sizeOfValue);
 	Element* newSon = generateElement(key, sizeOfValue, new_value, &workingPointer);
 	*workingPointerOffset = workingPointer - buffer;
-	
+
 	if(headerPointer->key == key)
-	{    
+	{
 		newSon->next = getNextOf(getHead(headerPointer));
 		addModification(workPage, 0, newSon);
 	}
 	else
-	{   
+	{
 	    Element* fatherSon = getNextOf(father);
         if(fatherSon != NULL)
         {
             Element* newSonNext = getNextOf(fatherSon);
             newSon->next = newSonNext;
-            
+
 	        addModification(workPage, father->key, newSon);
 	    }
 	    else
@@ -814,7 +793,7 @@ void removeElementHashMap(long keyToRemove)
         if(fatherSon == NULL)
             addModification(workPage, 0, workingPointer);
         else
-            addModification(workPage, 0, getNextOf(fatherSon)); 
+            addModification(workPage, 0, getNextOf(fatherSon));
     }
     else
     {
@@ -832,7 +811,7 @@ void removeElementHashMap(long keyToRemove)
 	/*
 	*	This function updates while
 	*	on the batching mecanism
-	*/		
+	*/
 
 void updateElementFlush(long key, size_t sizeOfValue, void* new_value)
 {
@@ -840,23 +819,23 @@ void updateElementFlush(long key, size_t sizeOfValue, void* new_value)
 	Element* newSon = generateElement(key, sizeOfValue, new_value, &workingPointer);
 	*workingPointerOffset = workingPointer - buffer;
     FLUSH(workingPointerOffset);
-	
+
 	if(headerPointer->key == key)
-	{    
+	{
 		newSon->next = father->next;
 		forceFlush(newSon, sizeOfValue);
-		
+
 		*headerPointerOffset = newSon - buffer;
 		FLUSH(headerPointerOffset);
-		
+
 		headerPointer = newSon;
 	}
 	else
-	{ 
+	{
         if(father->next != NULL)
         {
             Element* newSonNext = father->next->next;
-            newSon->next = newSonNext; 
+            newSon->next = newSonNext;
 	        forceFlush(newSon, sizeOfValue);
 	        father->next = newSon;
 	        if(father->next != NULL)
@@ -866,7 +845,7 @@ void updateElementFlush(long key, size_t sizeOfValue, void* new_value)
 	    {
 	        perror("BOPL_UPDATE: Key not found");
 	    }
-	}		
+	}
 
 }
 
@@ -877,16 +856,16 @@ void removeElementFlush(Element* father, long keyToRemove)
     {
         if(headerPointer->next == NULL)
         {
-            *headerPointerOffset = workingPointer - buffer;    
+            *headerPointerOffset = workingPointer - buffer;
             FLUSH(headerPointerOffset);
-            headerPointer = workingPointer;    
+            headerPointer = workingPointer;
         }
         else
         {
             *headerPointerOffset = headerPointer->next - buffer;
             FLUSH(headerPointerOffset);
-            headerPointer = headerPointer->next;        
-        }    
+            headerPointer = headerPointer->next;
+        }
     }
     else
     {
@@ -904,21 +883,21 @@ void removeElementFlush(Element* father, long keyToRemove)
 }
 
 /*
-*   Functions that perform 
+*   Functions that perform
 *   the lookup given a key
 */
 void* normalLookup(long key)
 {
 	void* value;
 	Element* result = findElement(headerPointer, key);
-	
+
 	value = result->value;
 	if(result->key != key)
-	{   
+	{
         perror("BOPL_LOOKUP: Key not found");
 	    value = NULL;
 	}
-	
+
 	return  value;
 }
 
@@ -926,14 +905,14 @@ void* hashMapLookup(long key)
 {
     void* value;
     Element* result = findUpdatedElement(headerPointer, key);
-    
+
 	value = result->value;
 	if(result->key != key)
-	{   
+	{
         perror("BOPL_LOOKUP: Key not found");
 	    value = NULL;
 	}
-	
+
 	return  value;
 }
 
@@ -947,13 +926,13 @@ int forceFlush(Element* toFlush, size_t sizeOfValue)
 {
 	int sizeOfElement = sizeof(Element) + sizeOfValue;
 	Element* toStop = toFlush;
-		
+
 	while(toFlush < toStop + sizeOfElement)
 	{
 		FLUSH(toFlush);
 	 	toFlush += wordBytes;
 	}
-	
+
 	return 1;
 }
 
@@ -964,26 +943,26 @@ int forceFlush(Element* toFlush, size_t sizeOfValue)
 *   when occurs a fault
 */
 void recoverFromLog()
-{   
+{
     int indexLastEntry = *numberOfEntriesLog + 1;
     LogEntry* lastLogEntry = logEntries + indexLastEntry;
-    
+
     if(lastLogEntry->oldNext == NULL)
         lastLogEntry -= 1;
-        
+
     while(lastLogEntry->epoch_k > safedPage)
     {
         if(lastLogEntry->fatherKey == lastLogEntry->oldNext->key)
         {
             *headerPointerOffset = lastLogEntry->oldNext - buffer;
             FLUSH(headerPointerOffset);
-            headerPointer = lastLogEntry->oldNext;   
+            headerPointer = lastLogEntry->oldNext;
         }
         else
         {
-            recoverStructure(lastLogEntry->fatherKey, lastLogEntry->oldNext); 
+            recoverStructure(lastLogEntry->fatherKey, lastLogEntry->oldNext);
         }
-        
+
         lastLogEntry -= 1;
     }
 }
@@ -991,7 +970,7 @@ void recoverFromLog()
 void recoverStructure(long fatherKey, Element* oldNext)
 {
     Element* father = findFatherElement(headerPointer, fatherKey);
-    
+
     father->next = oldNext;
     FLUSH(father->next);
 }
@@ -999,13 +978,13 @@ void recoverStructure(long fatherKey, Element* oldNext)
 void addLogEntry(long fatherKey, Element* oldNext, int page)
 {
     LogEntry* entry = logEntries;
-    
+
     entry->epoch_k = page;
     entry->fatherKey = fatherKey;
     entry->oldNext = oldNext;
-    
+
     logEntries += sizeof(LogEntry);
-    
+
     while(entry < logEntries)
     {
         FLUSH(entry);
@@ -1021,7 +1000,7 @@ void addLogEntry(long fatherKey, Element* oldNext, int page)
 * This functions checks if a new
 * Element passes the threshhold,
 * if it does the new Element it's
-* created in the new page     
+* created in the new page
 */
 
 void checkThreshold(size_t sizeOfValue)
@@ -1029,7 +1008,7 @@ void checkThreshold(size_t sizeOfValue)
     //Se calhar não é preciso
 	int lastPage =  getPointerPage(workingPointer);
 	int nextPage = getPointerPage(workingPointer + sizeof(Element) + sizeOfValue);
-	
+
 	if(lastPage < nextPage && listMode != FLUSH_ONLY_MODE)
 	{
 		workingPointer += getLeftToFillPage(workingPointer);
@@ -1037,6 +1016,3 @@ void checkThreshold(size_t sizeOfValue)
 		workPage ++;
 	}
 }
-
-
-

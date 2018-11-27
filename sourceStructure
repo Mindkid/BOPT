@@ -1,0 +1,39 @@
+-- BOPL.h
+---- BOPL_init  1
+---- bopl_insert  1
+---- bopl_lookup  1
+---- bopl_close   1
+---- bopl_update  1
+---- bopl_remove  1
+---- bopl_update  1
+---- bopl_inplace_insert  1
+
+-- hashmap.h
+---- initHashMode 1
+---- addModification  1
+---- removeEpochModifications 1
+---- getEpochModifications  1
+---- getNextOf  1
+---- getHead  1
+
+-- log.h  0
+---- initLog
+---- addLogEntry
+---- recoverFromLog
+---- recoverStructure
+
+-- list.h
+---- generateElement  1
+---- addElementInList 1
+---- addElementInListHash 0
+---- inplaceInsertFlush 0
+---- inplaceInsertUndoLog 0
+---- inplaceInsertHashMap 0
+---- updateElementUndoLog 0
+---- removeElementUndoLog 0
+---- updateElementHashMap 0
+---- removeElementHashMap 0
+---- updateElementFlush 0
+---- removeElementFlush 0
+---- findElement  1
+---- findUpdatedElement 0
