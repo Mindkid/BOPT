@@ -1,5 +1,7 @@
 #include "hashmap.h"
 
+Element* getNewNextElement(long fatherKey);
+Element* getNewNextOfHead();
 /*
 *   This function inits the
 *   hash and epoch buffer
@@ -21,7 +23,7 @@ void insertModification(int epoch, long fatherKey, Modification* newModif)
     if(hashHead->newNext == NULL)
     {
         hashHead->epoch_k = newModif->epoch_k;
-        hashHead->fatherKey = newModif->fatherKey;
+        hashHead->father = newModif->father;
         hashHead->newNext = newModif->newNext;
     }
     else
@@ -59,15 +61,22 @@ void insertModification(int epoch, long fatherKey, Modification* newModif)
 
 }
 
-void addModification(int epoch, long fatherKey, Element* newNext)
+void addModification(int epoch, Element* father, Element* newNext)
 {
     Modification* newModif = (Modification*) malloc(sizeof(Modification));
 
     newModif->epoch_k = epoch;
-    newModif->fatherKey = fatherKey;
+    newModif->father = father;
     newModif->newNext = newNext;
 
-    insertModification(epoch, fatherKey, newModif);
+    if(father == NULL)
+    {
+      insertModification(epoch, 0, newModif);
+    }
+    else
+    {
+      insertModification(epoch, father->key, newModif);
+    }
 }
 
 Epoch_Modification* getEpochModifications(int epoch)
@@ -113,20 +122,37 @@ Element* getNewNextElement(long fatherKey)
     Element* result = NULL;
     while(hashHead != NULL)
     {
-        if(hashHead->fatherKey == fatherKey)
+        if(hashHead->father->key == fatherKey)
         {
             result = hashHead->newNext;
-            break;
+            //Dont stop because i want the latest
         }
         hashHead = hashHead->next;
     }
+    return result;
+}
 
+Element* getNewNextOfHead()
+{
+    int hashCode = 0;
+    Modification* hashHead = hashOfModifications + hashCode;
+
+    Element* result = NULL;
+    while(hashHead != NULL)
+    {
+        if(hashHead->father == NULL)
+        {
+            result = hashHead->newNext;
+            //Dont stop because i want the latest
+        }
+        hashHead = hashHead->next;
+    }
     return result;
 }
 
 Element* getHead(Element* head)
 {
-    Element* result = getNewNextElement(0);
+    Element* result = getNewNextOfHead();
     if(result == NULL)
     {
         result = head;
@@ -142,60 +168,4 @@ Element* getNextOf(Element* father)
         result = father->next;
     }
     return result;
-}
-
-/*
-*   ADD ELEMENT TO THE UPDATED LIST
-*/
-Element* addElementInListHash(Element** head, Element* toAdd, int epoch)
-{
-
-    Element* current = *head;
-
-    current = findUpdatedElement(current, toAdd->key);
-
-    if(current != toAdd)
-        current->next = toAdd;
-
-    return current;
-}
-
-Element* findUpdatedElement(Element* head, long key)
-{
-    Element* trueHead = getHead(head);
-
-    Element* nextElement = getNextOf(trueHead);
-
-    while(nextElement != NULL)
-    {
-        if(trueHead->key == key)
-        {
-            break;
-	    }
-	    trueHead = nextElement;
-	    nextElement = getNextOf(trueHead);
-    }
-
-    return trueHead;
-}
-
-Element* findUpdatedFatherElement(Element* head, long sonKey)
-{
-    Element* trueHead = getHead(head);
-
-    Element* nextElement = getNextOf(trueHead);
-    if(trueHead->key != sonKey)
-	{
-        while(nextElement != NULL)
-        {
-            if(nextElement->key == sonKey)
-            {
-		        break;
-	        }
-            trueHead = nextElement;
-	        nextElement = getNextOf(trueHead);
-        }
-    }
-    return trueHead;
-
 }

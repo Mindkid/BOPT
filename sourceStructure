@@ -5,7 +5,6 @@
 ---- bopl_close   1
 ---- bopl_update  1
 ---- bopl_remove  1
----- bopl_update  1
 ---- bopl_inplace_insert  1
 
 -- hashmap.h
@@ -16,6 +15,19 @@
 ---- getNextOf  1
 ---- getHead  1
 
+
+
+ESTRUTURA DO LOG :
+      -> FATHER ELEMENT
+      -> OLD NEXT
+      -> EPOCH
+  TODO
+      -> FLUSH headerPointerOffset
+          -> The head it's if father == NULL
+              ->If father it's the head,
+                    if old next == NULL them:
+                      head = WorkingPointer;
+TODO
 -- log.h  0
 ---- initLog
 ---- addLogEntry
@@ -25,15 +37,15 @@
 -- list.h
 ---- generateElement  1
 ---- addElementInList 1
----- addElementInListHash 0
----- inplaceInsertFlush 0
----- inplaceInsertUndoLog 0
----- inplaceInsertHashMap 0
----- updateElementUndoLog 0
----- removeElementUndoLog 0
----- updateElementHashMap 0
----- removeElementHashMap 0
----- updateElementFlush 0
----- removeElementFlush 0
+---- addElementInListHash 1
+---- inplaceInsertFlush 1
+---- updateElementFlush 1
+---- removeElementFlush 1
+---- inplaceInsertUndoLog 1
+---- updateElementUndoLog 1
+---- removeElementUndoLog 1
+---- inplaceInsertHashMap 1
+---- updateElementHashMap 1
+---- removeElementHashMap 1
 ---- findElement  1
----- findUpdatedElement 0
+---- findUpdatedElement 1
