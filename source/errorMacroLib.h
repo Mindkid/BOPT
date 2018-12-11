@@ -1,5 +1,5 @@
-#ifndef ERROR_MACRO_LIB_H
-#define ERROR_MACRO_LIB_H
+#ifndef __ERROR_MACRO_LIB_H__
+#define __ERROR_MACRO_LIB_H__
 
 #define BOPL_REMOVE_ERROR "BOPL-REMOVE: key not found"
 #define BOPL_UPDATE_ERROR "BOPL-UPDATE: key not found"

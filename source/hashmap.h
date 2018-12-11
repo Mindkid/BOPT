@@ -1,5 +1,5 @@
-#ifndef HASH_MAP_H
-#define HASH_MAP_H
+#ifndef __HASH_MAP_H__
+#define __HASH_MAP_H__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +10,7 @@
 
 #define MAX_EPOCHS 6
 #define NUMBER_OF_BUCKETS 20
+
 
 typedef struct Modification
 {
@@ -39,7 +40,7 @@ void initHashMode();
 /*
 *   ADD/GET/REMOVE MODIFICATIONS OF A EPOCH
 */
-void addModification(int epoch, Element father, Element* newNext);
+void addModification(int epoch, Element* father, Element* newNext);
 Epoch_Modification* getEpochModifications(int epoch);
 void* removeEpochModifications(int epoch);
 

@@ -43,12 +43,12 @@ Element* generateElement(long key, size_t sizeOfValue, const void* value, Elemen
   	n->sizeOfValue =  sizeOfValue;
 
   	n->value = (void*) *workingPointer;
-    	memmove(n->value, value, sizeOfValue);
-    	*workingPointer += sizeOfValue;
+    memmove(n->value, value, sizeOfValue);
+    *workingPointer += sizeOfValue;
 
-      n->next = NULL;
+    n->next = NULL;
 
-      return n;
+    return n;
 }
 /**************************************************************/
 
@@ -246,7 +246,7 @@ int updateElementUndoLog(Element* newElement, Element** headerPointer, int workP
 	int result = SUCCESS;
   Element* head = *headerPointer;
 
-	if(head->key == key)
+	if(head->key == newElement->key)
 	{
 		newElement->next = head->next;
 		addLogEntry(NULL, head, workPage);
@@ -254,12 +254,12 @@ int updateElementUndoLog(Element* newElement, Element** headerPointer, int workP
 	}
 	else
 	{
-    Element* father = findFatherElement(head, key);
+    Element* father = findFatherElement(head, newElement->key);
     if(father->next != NULL)
     {
       newElement->next = father->next->next;
       addLogEntry(father, father->next, workPage);
-      father->next = newSon;
+      father->next = newElement;
     }
     else
     {
@@ -321,9 +321,9 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
       }
       else
       {
-          *headerPointerOffset = headerPointer->next - buffer;
+          *headerPointerOffset = head->next - buffer;
           FLUSH(headerPointerOffset);
-          head = headerPointer->next;
+          head = head->next;
       }
   }
   else
@@ -380,7 +380,7 @@ int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* wor
     }
 		return result;
 }
-
+            /*********** HASH_MAP_MODE ****************/
 
 int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage)
 {
@@ -390,11 +390,11 @@ int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* wor
 
     if(trueHead->key == keyToRemove)
     {
-				Element* trueHeadÑext  = getNextOf(trueHead);
-        if(trueHeadÑext == NULL)
+				Element* trueHeadNext  = getNextOf(trueHead);
+        if(trueHeadNext == NULL)
             addModification(workPage, 0, workingPointer);
         else
-            addModification(workPage, 0, trueHeadÑext);
+            addModification(workPage, 0, trueHeadNext);
     }
     else
     {
@@ -402,7 +402,7 @@ int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* wor
 				Element* fatherSon = getNextOf(father);
         if(fatherSon != NULL)
         {
-            addModification(workPage, father->key, getNextOf(fatherSon));
+            addModification(workPage, father, getNextOf(fatherSon));
         }
         else
 		    {

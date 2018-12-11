@@ -1,12 +1,10 @@
-#ifndef BOPL_H
-#define BOPL_H
+#ifndef __BOPL_H__
+#define __BOPL_H__
 
 #include <unistd.h>
-#include <stdbool.h>
 #include <signal.h>
 #include <malloc.h>
 #include <errno.h>
-#include <limits.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -18,18 +16,7 @@
 #include "hashmap.h"
 #include "macroLib.h"
 #include "errorMacroLib.h"
-/*
-*   This are the structure
-*   that corresponds to
-*   a entry of a log
-*/
-typedef struct LogEntry
-{
-	int epoch_k;
-	long fatherKey;
-	Element* oldNext;
-}LogEntry;
-
+#include "log.h"
 
 /*
 *	This is the buffer were
@@ -43,6 +30,16 @@ Element* buffer = NULL;
 Element* savePointer = NULL;
 Element* workingPointer = NULL;
 Element* headerPointer = NULL;
+
+/*
+*   Represnts how many are
+*   working pages and savePages
+*/
+int workPage = 0;
+int safedPage = 0;
+
+
+long wordBytes = 0;
 
 /*
 *	This are the variables
@@ -92,9 +89,6 @@ void batchingTheFlushs(Element* nextPointer);
 *	with the pages marking and the
 *	offsets
 */
-
-void disablePages();
-void markPages();
 int getPointerPage(Element* pointer);
 int getLeftToFillPage(Element* pointer);
 void writeThrash();
@@ -102,56 +96,8 @@ void writeThrash();
 /*
 *	This are the function used by
 *	the bopl_init
-*/#define ERROR -1
-#define SUCCESS 0;
-
+*/
 int openFile();
-void handler(int sig, siginfo_t *si, void *unused);
-void setSignalHandler();
-void initBufferMapping(int numberOfPages);
-void initMechanism(int* grain);
-
-
-/*
-*	This are the functions that
-*	perform the insert of the values
-*/
-void addElementMechanism(long key, size_t sizeOfValue, void* value);
-void addElementFlush(long key, size_t sizeOfValue, void* value);
-
-/*
-*	this are the functions that
-*	perform the insert inplace
-*	of the values
-*/
-
-void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue);
-void inplaceInsertUndoLog(long fatherKey, Element* newElement, size_t sizeOfValue);
-void inplaceInsertHashMap(long fatherKey, Element* newElement, size_t sizeOfValue);
-
-/*
-*	This are the functions used
-*	to perform the update of the
-*	values
-*/
-
-void updateElementFlush(long key, size_t sizeOfValue, void* new_value);
-void removeElementFlush(Element* father, long keyToRemove);
-
-void updateElementUndoLog(long key, size_t sizeOfValue, void* new_value);
-void removeElementUndoLog(Element* father, long keyToRemove);
-
-void updateElementHashMap(long key, size_t sizeOfValue, void* new_value);
-void removeElementHashMap(long keyToRemove);
-
-/*
-*   Functions that perform
-*   the lookup given a key
-*/
-void* normalLookup(long key);
-
-void* hashMapLookup(long key);
-
 
 /*
 *	Function that it's used
@@ -159,17 +105,6 @@ void* hashMapLookup(long key);
 *	the FLUSH_ONLY_MODE mode
 */
 int forceFlush(Element* toFlush, size_t sizeOfValue);
-
-/*
-*   Function that it's used
-*   to recover the structur
-*   when occurs a fault
-*/
-void recoverFromLog();
-void recoverStructure(long fatherKey, Element* oldNext);
-void addLogEntry(long fatherKey, Element* oldNext, int page);
-
-
 
 /**************************************************/
 #endif

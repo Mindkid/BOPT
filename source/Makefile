@@ -1,9 +1,9 @@
 CC=gcc -D_FILE_OFFSET_BITS=64 -g -Wall
-CFLAGS=-lpthread 
+CFLAGS=-lpthread
 
-main.o: main.c list.c BOPL.c hashmap.c
-	$(CC)  BOPL.c list.c  hashmap.c main.c -o  main.o $(CFLAGS)
-       
+main.o: main.c list.c hashmap.c log.c BOPL.c  
+	$(CC)  BOPL.c list.c  hashmap.c main.c log.c -o  main.o $(CFLAGS)
+
 clean:
 	rm *.o
 	rm ../ramdisk/*.dat

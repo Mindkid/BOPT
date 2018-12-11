@@ -1,5 +1,7 @@
-#ifndef MACRO_LIB_H
-#define MACRO_LIB_H
+#ifndef __MACRO_LIB_H__
+#define __MACRO_LIB_H__
+
+#include <limits.h>
 
 #define BITS_ON_A_BYTE 8
 
@@ -14,11 +16,6 @@
 #define SAVE_POINTER_OFFSET_FILE_NAME "../ramdisk/savePointerOffset.dat"
 #define WORKING_POINTER_OFFSET_FILE_NAME "../ramdisk/workingPointerOffset.dat"
 #define HEADER_POINTER_OFFSET_FILE_NAME "../ramdisk/headerPointerOffset.dat"
-
-#define NUMBER_ENTRIES_FILE_NAME "../ramdisk/entryNumber.dat"
-#define LOG_FILE_NAME "../ramdisk/log.dat"
-#define NUMBER_LOG_PER_PAGE 10
-
 
 enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define DIRTY_PAGES_FILE_NAME "../ramdisk/dirtyPages.dat"
