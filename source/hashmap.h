@@ -14,7 +14,7 @@
 
 typedef struct Modification
 {
-    int epoch_k;
+    long epoch_k;
     Element* father;
     Element* newNext;
 
@@ -29,9 +29,6 @@ typedef struct Epoch_Modification
     struct Epoch_Modification* next;
 }Epoch_Modification;
 
-Modification* hashOfModifications;
-Epoch_Modification* listOfModificationsInEpoch;
-
 /*
 *   INIT HASHMAP
 */
@@ -40,9 +37,9 @@ void initHashMode();
 /*
 *   ADD/GET/REMOVE MODIFICATIONS OF A EPOCH
 */
-void addModification(int epoch, Element* father, Element* newNext);
-Epoch_Modification* getEpochModifications(int epoch);
-void* removeEpochModifications(int epoch);
+void addModification(long epoch, Element* father, Element* newNext);
+Epoch_Modification* getEpochModifications(long epoch);
+void* removeEpochModifications(long epoch);
 
 /*
 *   GET ELEMENTS OF THE HASH IF EXISTS

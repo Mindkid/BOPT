@@ -2,6 +2,10 @@
 
 Element* getNewNextElement(long fatherKey);
 Element* getNewNextOfHead();
+
+Modification* hashOfModifications;
+Epoch_Modification* listOfModificationsInEpoch;
+
 /*
 *   This function inits the
 *   hash and epoch buffer
@@ -15,7 +19,7 @@ void initHashMode()
 /*
 *   ADD/GET/REMOVE MODIFICATIONS OF A EPOCH
 */
-void insertModification(int epoch, long fatherKey, Modification* newModif)
+void insertModification(long epoch, long fatherKey, Modification* newModif)
 {
     int hashCode = fatherKey % NUMBER_OF_BUCKETS;
     Modification* hashHead = hashOfModifications + hashCode;
@@ -36,12 +40,11 @@ void insertModification(int epoch, long fatherKey, Modification* newModif)
         hashHead->next = newModif;
     }
 
-
     int epoch_position = epoch % MAX_EPOCHS;
 
     Epoch_Modification* newEpochModif = (Epoch_Modification*) malloc(sizeof(Epoch_Modification));
 
-    newEpochModif->modification = newModif;
+    newEpochModif->modification = hashHead;
     newEpochModif->next = NULL;
 
     Epoch_Modification* epochModif = listOfModificationsInEpoch + epoch_position;
@@ -61,7 +64,7 @@ void insertModification(int epoch, long fatherKey, Modification* newModif)
 
 }
 
-void addModification(int epoch, Element* father, Element* newNext)
+void addModification(long epoch, Element* father, Element* newNext)
 {
     Modification* newModif = (Modification*) malloc(sizeof(Modification));
 
@@ -79,13 +82,13 @@ void addModification(int epoch, Element* father, Element* newNext)
     }
 }
 
-Epoch_Modification* getEpochModifications(int epoch)
+Epoch_Modification* getEpochModifications(long epoch)
 {
     int epoch_position = epoch % MAX_EPOCHS;
     return listOfModificationsInEpoch + epoch_position;
 }
 
-void* removeEpochModifications(int epoch)
+void* removeEpochModifications(long epoch)
 {
 
     int epoch_position = epoch % MAX_EPOCHS;
@@ -122,7 +125,7 @@ Element* getNewNextElement(long fatherKey)
     Element* result = NULL;
     while(hashHead != NULL)
     {
-        if(hashHead->father->key == fatherKey)
+        if(hashHead->father != NULL && hashHead->father->key == fatherKey)
         {
             result = hashHead->newNext;
             //Dont stop because i want the latest

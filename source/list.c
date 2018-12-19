@@ -310,7 +310,6 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
   int result = SUCCESS;
 
   Element* head = *headerPointer;
-
   if(head->key == keyToRemove)
   {
       if(head->next == NULL)
@@ -325,10 +324,11 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
           FLUSH(headerPointerOffset);
           head = head->next;
       }
+      *headerPointer = head;
   }
   else
   {
-      Element* father = findFatherElement(head, keyToRemove);
+      Element* father = findFatherElement(*headerPointer, keyToRemove);
       if(father->next != NULL)
       {
           father->next = father->next->next;
@@ -360,10 +360,12 @@ int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* wor
         {
             head = head->next;
         }
+
+        *headerPointer = head ;
     }
     else
     {
-			Element* father = findFatherElement(head, keyToRemove);
+			Element* father = findFatherElement(*headerPointer, keyToRemove);
       if(father->next != NULL)
       {
           addLogEntry(father, father->next, workPage);

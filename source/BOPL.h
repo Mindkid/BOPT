@@ -19,42 +19,11 @@
 #include "log.h"
 
 /*
-*	This is the buffer were
-*	data are placed, the
-*	savepointer, the
-*	working pointer and the
-*	header pointer that points
-*	to the head of the list
-*/
-Element* buffer = NULL;
-Element* savePointer = NULL;
-Element* workingPointer = NULL;
-Element* headerPointer = NULL;
-
-/*
-*   Represnts how many are
-*   working pages and savePages
-*/
-int workPage = 0;
-int safedPage = 0;
-
-
-long wordBytes = 0;
-
-/*
-*	This are the variables
-*   where are stored the offset
-*/
-int* savePointerOffset = 0;
-int* workingPointerOffset = 0;
-int* headerPointerOffset = 0;
-
-/*
 *	This are the function of the
 *	librarry BOPL this are the ones
 *	to use in the main function
 */
-void bopl_init(int numberOfPages, int* grain, int mode);
+void bopl_init(long numberOfPages, int* grain, int mode);
 void bopl_insert(long key, size_t sizeOfValue, void* new_value);
 void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new_value);
 void* bopl_lookup(long key);
