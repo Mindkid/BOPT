@@ -35,7 +35,7 @@ int* headerPointerOffset = 0;
 void handler(int sig, siginfo_t *si, void *unused);
 void initMechanism(int* grain);
 void checkThreshold(size_t sizeOfValue);
-void initBufferMapping(long numberOfPages);
+int initBufferMapping(long numberOfPages);
 void disablePages();
 void markPages();
 
@@ -74,9 +74,23 @@ int savePointerOffsetDescriptor;
 int workingPointerOffsetDescriptor;
 int headerPointerOffsetDescriptor;
 int dirtyPagesDescriptor;
-
+int saveFunctionIDDescriptor;
 
 int workdone = 0;
+
+/*
+*	This are the ID of the functions
+* TODO
+*		- Save the funtion ID in memory
+*		- Passe it on the check the threashold
+*		- temporaryFunctionID it's used so that
+*			saveFunctionID it's only fulshed when
+*			it's trully needed.
+*
+*/
+int functionID = 1;
+int temporaryFunctionID = 0;
+int* saveFunctionID = NULL;
 
 /*
 *	The List can be operated in
@@ -104,9 +118,9 @@ int listMode;
 	* program starts properlly
 	*/
 
-void bopl_init(long numberOfPages, int* grain, int mode)
+int bopl_init(long numberOfPages, int* grain, int mode)
 {
-	initBufferMapping(numberOfPages);
+	int functionId = initBufferMapping(numberOfPages);
 
 	switch(mode)
 	{
@@ -126,6 +140,7 @@ void bopl_init(long numberOfPages, int* grain, int mode)
 			break;
 	}
 
+	return functionId;
 }
 
 	/*
@@ -154,6 +169,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 				perror(BAD_INIT_ERROR);
 				exit(ERROR);
 	}
+	functionID ++;
 }
 
 	/*
@@ -183,6 +199,8 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 					perror(BAD_INIT_ERROR);
 					exit(ERROR);
 		}
+
+		functionID ++;
 }
 
     /*
@@ -196,12 +214,17 @@ void bopl_remove(long keyToRemove)
 	switch (listMode) {
 		case HASH_MAP_MODE:
 			  result = removeElementHashMap(keyToRemove, &headerPointer, workingPointer, workPage);
+				functionID ++;
 				break;
 		case UNDO_LOG_MODE:
 				result = removeElementUndoLog(keyToRemove, &headerPointer, workingPointer, workPage);
+				functionID ++;
 				break;
 		case FLUSH_ONLY_MODE:
 				 result = removeElementFlush(keyToRemove, &headerPointer, headerPointerOffset, buffer, workingPointer);
+			 	 functionID ++;
+				 *saveFunctionID = functionID;
+				 FLUSH(saveFunctionID);
 				break;
 		default:
 			perror(BAD_INIT_ERROR);
@@ -210,6 +233,8 @@ void bopl_remove(long keyToRemove)
 
 	if(result == ERROR)
 		perror(BOPL_REMOVE_ERROR);
+
+
 }
 
 
@@ -229,12 +254,13 @@ void bopl_close()
 		sem_post(&workingSemaphore);
 		pthread_join(workingThread, NULL);
 
+		munmap(saveFunctionID, sizeof(int));
 		munmap(savePointerOffset, sizeof(int));
 		munmap(dirtyPages, (numberPages/ BITS_PER_WORD));
 
 		close(dirtyPagesDescriptor);
 		close(savePointerOffsetDescriptor);
-
+		close(saveFunctionIDDescriptor);
 		closeLog();
 	}
 
@@ -296,6 +322,9 @@ void* bopl_lookup(long key)
 			perror(BOPL_SEARCH_ERROR);
 			value = NULL;
 	}
+
+	functionID ++;
+
 	return value;
 }
 
@@ -326,6 +355,8 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 	if(result == ERROR)
 		perror(BOPL_UPDATE_ERROR);
 
+	functionID ++;
+
 	return result;
 }
 
@@ -342,7 +373,7 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 	*	informations it's stored
 	*/
 
-void initBufferMapping(long numberOfPages)
+int initBufferMapping(long numberOfPages)
 {
 	int offsetFileCreated = 1;
 
@@ -358,6 +389,7 @@ void initBufferMapping(long numberOfPages)
 	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME, sizeOfFile);
 	workingPointerOffsetDescriptor = openFile(&offsetFileCreated, WORKING_POINTER_OFFSET_FILE_NAME, sizeof(int));
 	headerPointerOffsetDescriptor = openFile(&offsetFileCreated, HEADER_POINTER_OFFSET_FILE_NAME, sizeof(int));
+	saveFunctionIDDescriptor = openFile(&offsetFileCreated, SAVE_FUNCTION_ID_FILE_NAME, sizeof(int));
 
 	//buffer = (Element*) pmem_map_file(NULL, MAP_SIZE, PMEM_FILE_TMPFILE, O_TMPFILE, NULL, NULL);
 
@@ -365,10 +397,16 @@ void initBufferMapping(long numberOfPages)
 	workingPointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, workingPointerOffsetDescriptor, 0);
 	headerPointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, headerPointerOffsetDescriptor, 0);
 
+	saveFunctionID = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, saveFunctionIDDescriptor, 0);
+
+	functionID = *saveFunctionID;
+
 	workingPointer = buffer;
 	workingPointer += *workingPointerOffset;
 	headerPointer = buffer;
 	headerPointer += *headerPointerOffset;
+
+	return functionID;
 }
 	/*
 	*	This function initiates
@@ -395,7 +433,6 @@ void initMechanism(int* grain)
 
 	if(!offsetFileCreated)
 		savePointer += *savePointerOffset;
-
 
 	safedPage = getPointerPage(savePointer);
 	workPage = getPointerPage(workingPointer);
@@ -478,6 +515,9 @@ void batchingTheFlushs(Element* nextPointer)
 			}
 			flushFirstEntryOffset();
 		}
+
+		*saveFunctionID  = temporaryFunctionID;
+		FLUSH(saveFunctionID);
 
     *savePointerOffset = savePointer - buffer;
     FLUSH(savePointerOffset);
@@ -702,8 +742,13 @@ void checkThreshold(size_t sizeOfValue)
 	if(lastPage < nextPage && listMode != FLUSH_ONLY_MODE)
 	{
 		workingPointer += getLeftToFillPage(workingPointer);
+		temporaryFunctionID = functionID;
 		sem_post(&workingSemaphore);
 		workPage ++;
-
+	}
+	else
+	{
+		*saveFunctionID = functionID;
+		FLUSH(saveFunctionID);
 	}
 }

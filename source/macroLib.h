@@ -17,6 +17,8 @@
 #define WORKING_POINTER_OFFSET_FILE_NAME "../ramdisk/workingPointerOffset.dat"
 #define HEADER_POINTER_OFFSET_FILE_NAME "../ramdisk/headerPointerOffset.dat"
 
+#define SAVE_FUNCTION_ID_FILE_NAME "../ramdisk/saveFunctionID.dat"
+
 enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define DIRTY_PAGES_FILE_NAME "../ramdisk/dirtyPages.dat"
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)

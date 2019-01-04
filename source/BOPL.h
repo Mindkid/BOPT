@@ -23,7 +23,7 @@
 *	librarry BOPL this are the ones
 *	to use in the main function
 */
-void bopl_init(long numberOfPages, int* grain, int mode);
+int bopl_init(long numberOfPages, int* grain, int mode);
 void bopl_insert(long key, size_t sizeOfValue, void* new_value);
 void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new_value);
 void* bopl_lookup(long key);
@@ -66,7 +66,7 @@ void writeThrash();
 *	This are the function used by
 *	the bopl_init
 */
-int openFile();
+int openFile(int* created, char* fileName, long size);
 
 /*
 *	Function that it's used

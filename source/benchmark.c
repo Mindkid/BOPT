@@ -1,24 +1,55 @@
-#include"BOPL.h"
+#include "fileMacros.h"
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <getopt.h>
 
-#define NUMBER_OF_PAGES 1000
+#define NUMBER_OF_PAGES 1000000
 #define NUMBER_OF_ITERATIONS 50000
+#define GRAIN 1
+
 #define RANDOM_SEED 0
 #define MAX_PROBABILITY 100
 
 
-enum operations {insertElement, updateElement, removeElement, lookupElement, inplaceInsertElement};
+long keys[NUMBER_OF_ITERATIONS];
 
-int numberOfInserts = 0;
-int numberOfRemoves = 0;
-int numberOfUpdates = 0;
-int numberOfSearchs = 0;
-int numberOfInplaceInsert = 0;
+/*
+* This vector saves the probability
+* of each operation , the operations
+* are in this order:
+*   0 -> insert
+*   1 -> inplaceInsert
+*   2 -> lookup
+*   3 -> update
+*   4 -> remove
+*/
+int prob_of_operation[NUMBER_OF_OPERATIONS];
+
+void help();
+
+int main(int argc, char* argv[])
+{
+  char opt;
+  while((opt = getopt(argc, argv, "hi:p:u:r:l:n:")) != -1)
+  {
+    switch(opt)
+    {
+        case 'r':
+
+          break;
+        default:
+          help();
+          exit(EXIT_FAILURE);
+    }
+  }
+  return 0;
+}
+
 
 int main(int argc, char *argv[])
 {
   long keys[NUMBER_OF_ITERATIONS];
-  int keysOnBuffer = 2;
 
   long fatherKey;
   long key;
@@ -28,7 +59,6 @@ int main(int argc, char *argv[])
   int grain = 1;
   int sizeOfEnum = inplaceInsertElement;
 
-  bopl_init(NUMBER_OF_PAGES, &grain, FLUSH_ONLY_MODE);
   srand(RANDOM_SEED);
 
   while(i < NUMBER_OF_ITERATIONS)
@@ -73,11 +103,30 @@ int main(int argc, char *argv[])
     }
     i++;
   }
-  printf("Number of Inserts: %d\n", numberOfInserts);
-  printf("Number of Updates: %d\n", numberOfUpdates);
-  printf("Number of Removes: %d\n", numberOfRemoves);
-  printf("Number of Searchs: %d\n", numberOfSearchs);
-  printf("Number of Inplace Insert: %d\n", numberOfInplaceInsert);
-
   return 0;
+}
+
+void help()
+{
+  puts("");
+  puts("The algorithm can be runned without any option, if it does the operations are evenly distributed,");
+  puts("and the NAME_OF_THE_FILE, GRAIN_SIZE, SIZE and NUMBER_OF_ITERATIONS are default.");
+  puts("");
+  printf("\t NAME_OF_THE_FILE: %s\n", NAME_OF_THE_FILE);
+  printf("\t GRAIN_SIZE: %d\n", GRAIN);
+  printf("\t SIZE: %d\n", NUMBER_OF_PAGES);
+  printf("\t NUMBER_OF_ITERATIONS: %d\n", NUMBER_OF_ITERATIONS);
+  puts("");
+  puts("Options:");
+  puts("\t -i PERCENTAGE_OF_INSERT : Percentage of inserts.");
+  puts("\t -p PERCENTAGE_OF_INPLACE_INSERT : Percentage of inplace inserts.");
+  puts("\t -u PERCENTAGE_OF_UPDATES : Percentage of updates.");
+  puts("\t -r PERCENTAGE_OF_REMOVES : Percentage of removes.");
+  puts("\t -l PERCENTAGE_OF_LOOKUPS : Percentage of lookups.");
+  puts("\t -n NAME_OF_THE_FILE : Name of the outputted file.");
+  puts("\t -t NUMBER_OF_ITERATIONS: Number of operations in the file.");
+  puts("\t -g GRAIN_SIZE: Size of the granularity of the algorithm.");
+  puts("\t -s SIZE: Number of pages that are allocated.");
+  puts("\t -h : To see help.");
+  puts("");
 }
