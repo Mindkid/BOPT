@@ -10,9 +10,11 @@ void help();
 
 int main(int argc, char *argv[])
 {
+  int addedOpt = 0;
   char opt;
   while((opt = getopt(argc, argv, "hr:")) != -1)
   {
+    addedOpt = 1;
     switch(opt)
     {
         case 'r':
@@ -23,6 +25,8 @@ int main(int argc, char *argv[])
           exit(EXIT_FAILURE);
     }
   }
+  if(addedOpt == 0)
+    help();
   return 0;
 }
 
@@ -52,9 +56,9 @@ void parseFile(char* file_location)
     {
       key = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
       size_t size = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-      char* value = strtok_r(line, FILE_DELIMITER, &saveptr);
+      int value = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
 
-      bopl_insert(key, size, value);
+      bopl_insert(key, size, &value);
     }
     else
     {
@@ -70,9 +74,9 @@ void parseFile(char* file_location)
           key = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
           long fatherKey = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
           size_t size = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-          char* value = strtok_r(line, FILE_DELIMITER, &saveptr);
+          int value = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
 
-          bopl_inplace_insert(fatherKey, key, size, value);
+          bopl_inplace_insert(fatherKey, key, size, &value);
         }
         else
         {
@@ -87,9 +91,9 @@ void parseFile(char* file_location)
             {
               key = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
               size_t size = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-              char* value = strtok_r(line, FILE_DELIMITER, &saveptr);
+              int value = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
 
-              bopl_update(key, size, value);
+              bopl_update(key, size, &value);
             }
             else
             {

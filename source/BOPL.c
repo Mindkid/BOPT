@@ -377,7 +377,7 @@ int initBufferMapping(long numberOfPages)
 {
 	int offsetFileCreated = 1;
 
-	int sizeOfFile;
+	unsigned long sizeOfFile;
 
 	pageSize = sysconf(_SC_PAGE_SIZE);
 	wordBytes = sysconf(_SC_WORD_BIT) / BITS_ON_A_BYTE;

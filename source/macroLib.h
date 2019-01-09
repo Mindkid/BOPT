@@ -2,6 +2,7 @@
 #define __MACRO_LIB_H__
 
 #include <limits.h>
+#include <stdint.h>
 
 #define BITS_ON_A_BYTE 8
 
