@@ -25,6 +25,12 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 
+#define WRITE_LATENCIE \
+          do {} while(1)
+
+#define READ_LATENCIE \
+          do {} while(1)
+
 /*
 *	The List can be operated in
 *	three modes:
@@ -42,4 +48,12 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define UNDO_LOG_MODE 1
 #define HASH_MAP_MODE 2
 
+
+/*
+* GRAPH RELATED VARIABLES
+*/
+#define MAX_CSV_NAME 50
+#define GRAPH_DIR "./graphs/"
+#define TIME_GRAPH "time.csv"
+#define FLUSH_GRAPH "flush.csv"
 #endif

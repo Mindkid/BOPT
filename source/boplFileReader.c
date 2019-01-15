@@ -102,8 +102,14 @@ void parseFile(char* file_location)
                 long numberOfPages = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
                 int grain = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
                 int mode = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
+                int iterations = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
+                int probInsert = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
+                int probInplaceInsert = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
+                int probLookup = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
+                int probUpdate = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
+                int probRemove = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
 
-                int functionID = bopl_init(numberOfPages, &grain, mode);
+                int functionID = bopl_init(numberOfPages, &grain, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove);
                 while (numberOfLine < functionID)
                 {
                   getline(&line, &len, fp);
@@ -118,12 +124,19 @@ void parseFile(char* file_location)
                 }
                 else
                 {
+                  if(strcmp(token, CRASH_OPERATION) == 0)
+                  {
+                    bopl_crash();
+                  }
+                  else
+                  {
                     puts("");
                     puts("-------------- ERROR --------------");
                     printf("----- BAD FUNTION AT LINE %d ------\n", numberOfLine);
                     puts("-----------------------------------");
                     puts("");
                     exit(EXIT_FAILURE);
+                  }
                 }
               }
             }

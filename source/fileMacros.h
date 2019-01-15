@@ -11,6 +11,7 @@
 #define UPDATE_OPERATION "update"
 #define REMOVE_OPERATION "remove"
 #define CLOSE_OPERATION "close"
+#define CRASH_OPERATION "crash"
 
 #define INSERT_INDEX 0
 #define INPLACE_INSERT_INDEX 1

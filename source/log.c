@@ -20,12 +20,12 @@ int firstEntryOffset = 0;
 int lastEntryOffset = 0;
 long numberOfEntries = 0;
 
-void initLog(int numberPages)
+void initLog(int grain)
 {
   int sizeOfLog;
   int offsetFileCreated = 1;
 
-  numberOfEntries = numberPages * NUMBER_LOG_PER_PAGE;
+  numberOfEntries = grain * NUMBER_LOG_PER_PAGE;
 
   sizeOfLog = numberOfEntries * sizeof(LogEntry);
 

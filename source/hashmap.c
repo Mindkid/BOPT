@@ -96,7 +96,7 @@ void* removeEpochModifications(long epoch)
 
     Epoch_Modification* removeModifications = epochRemove;
     Epoch_Modification* freeModification;
-    while(removeModifications != NULL)
+    while(removeModifications->modification != NULL)
     {
         Modification* newModif = removeModifications->modification;
         if(newModif->previous != NULL)

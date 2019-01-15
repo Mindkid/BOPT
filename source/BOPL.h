@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <semaphore.h>
+#include <time.h>
 //#include <libpmem.h>
 #include "list.h"
 #include "hashmap.h"
@@ -18,12 +19,13 @@
 #include "errorMacroLib.h"
 #include "log.h"
 
+
 /*
 *	This are the function of the
 *	librarry BOPL this are the ones
 *	to use in the main function
 */
-int bopl_init(long numberOfPages, int* grain, int mode);
+int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int probInsert, int probInplaceInsert, int probLookup, int probUpdate, int probRemove);
 void bopl_insert(long key, size_t sizeOfValue, void* new_value);
 void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new_value);
 void* bopl_lookup(long key);

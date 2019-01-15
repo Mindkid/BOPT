@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
   int grain = GRAIN;
   char* fileName = DEFAULT_FILE_NAME;
   int mode = FLUSH_ONLY_MODE;
-  int crashLine = 0;
+  int crashLine = -1;
 
   for(i = 0; i < NUMBER_OF_OPERATIONS; i++)
   {
@@ -123,7 +123,19 @@ void creatAndFillTestFile(char* fileName, int numberOfPages, int grain, int numb
   int i, prob;
   long fatherKey;
   int value, size;
+  int inserts = 0;
+  int inplaceInsert = 0;
+  int lookup = 0;
+  int update = 0;
+  int remove = 0;
+
   Stack* savedKeys;
+
+  printf("probability of Insert: %d\n", prob_of_operation[INSERT_INDEX]);
+  printf("probability of Inplace Insert: %d\n", prob_of_operation[INPLACE_INSERT_INDEX]);
+  printf("probability of Lookup: %d\n", prob_of_operation[LOOKUP_INDEX]);
+  printf("probability of Update: %d\n", prob_of_operation[UPDATE_INDEX]);
+  printf("probability of Remove: %d\n", prob_of_operation[REMOVE_INDEX]);
 
   size = sizeof(int);
 
@@ -132,23 +144,31 @@ void creatAndFillTestFile(char* fileName, int numberOfPages, int grain, int numb
   //char* filePath = strcat(fileName);
   FILE* file = fopen(fileName, "w+");
 
-  fprintf(file, "%s%s%d%s%d%s%d\n", INIT_OPERATION, FILE_DELIMITER, numberOfPages, FILE_DELIMITER, grain, FILE_DELIMITER, mode);
+  fprintf(file, "%s%s%d%s%d%s%d%s%d%s%d%s%d%s%d%s%d%s%d\n", INIT_OPERATION, FILE_DELIMITER, numberOfPages, FILE_DELIMITER, grain, FILE_DELIMITER, mode, FILE_DELIMITER, numberOfIterations, FILE_DELIMITER, prob_of_operation[INSERT_INDEX], FILE_DELIMITER, prob_of_operation[INPLACE_INSERT_INDEX], FILE_DELIMITER, prob_of_operation[LOOKUP_INDEX], FILE_DELIMITER, prob_of_operation[UPDATE_INDEX], FILE_DELIMITER, prob_of_operation[REMOVE_INDEX]);
 
   srand(RANDOM_SEED);
 
   for(i = 0; i < numberOfIterations; i++)
   {
+      if(i == crashLine)
+      {
+        fprintf(file, "%s%s\n", CRASH_OPERATION, FILE_DELIMITER);
+        continue;
+      }
+
       prob = rand() % MAX_PROBABILITY;
-      if(prob_of_operation[INSERT_INDEX] < prob)
+
+      if(prob_of_operation[INSERT_INDEX] > prob)
       {
           key = rand();
           value = rand();
           fprintf(file, "%s%s%ld%s%d%s%d\n", INSERT_OPERATION, FILE_DELIMITER, key , FILE_DELIMITER, size, FILE_DELIMITER, value);
           push(savedKeys, key);
+          inserts ++;
       }
       else
       {
-        if(prob_of_operation[INPLACE_INSERT_INDEX] < prob)
+        if(prob_of_operation[INPLACE_INSERT_INDEX] > prob)
         {
           key = rand();
           value = rand();
@@ -156,35 +176,45 @@ void creatAndFillTestFile(char* fileName, int numberOfPages, int grain, int numb
           push(savedKeys, fatherKey);
           push(savedKeys, key);
           fprintf(file, "%s%s%ld%s%ld%s%d%s%d\n", INPLACE_INSERT_OPERATION, FILE_DELIMITER, key, FILE_DELIMITER, fatherKey, FILE_DELIMITER, size, FILE_DELIMITER, value);
+          inplaceInsert ++;
         }
         else
         {
-          if(prob_of_operation[LOOKUP_INDEX] < prob)
+          if(prob_of_operation[LOOKUP_INDEX] > prob)
           {
             key = pop(savedKeys);
             push(savedKeys, key);
             fprintf(file, "%s%s%ld\n", LOOKUP_OPERATION, FILE_DELIMITER, key);
+            lookup ++;
           }
           else
           {
-            if(prob_of_operation[UPDATE_INDEX] < prob)
+            if(prob_of_operation[UPDATE_INDEX] > prob)
             {
               key = pop(savedKeys);
               push(savedKeys, key);
               value = rand();
               fprintf(file, "%s%s%ld%s%d%s%d\n", UPDATE_OPERATION, FILE_DELIMITER, key, FILE_DELIMITER, size, FILE_DELIMITER, value);
+              update ++;
             }
             else
             {
               key = pop(savedKeys);
               fprintf(file, "%s%s%ld\n", REMOVE_OPERATION, FILE_DELIMITER, key);
+              remove ++;
             }
           }
         }
       }
-  }
+    }
 
   fprintf(file, "%s%s\n", CLOSE_OPERATION, FILE_DELIMITER);
+
+  printf("Number of Insert: %d\n", inserts);
+  printf("Number of Inplace Insert: %d\n", inplaceInsert);
+  printf("Number of Lookup: %d\n", lookup);
+  printf("Number of Update: %d\n", update);
+  printf("Number of Remove: %d\n", remove);
 }
 
 void help()

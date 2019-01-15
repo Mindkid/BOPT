@@ -7,7 +7,7 @@
 #define FIRST_ENTRY_OFFSET_FILE_NAME "../ramdisk/firstEntryOffset.dat"
 #define LAST_ENTRY_OFFSET_FILE_NAME "../ramdisk/lastEntryOffset.dat"
 #define LOG_FILE_NAME "../ramdisk/log.dat"
-#define NUMBER_LOG_PER_PAGE 10
+#define NUMBER_LOG_PER_PAGE 200
 
 /*
 *   This are the structure
@@ -33,7 +33,7 @@ extern int wordBytes;
 *   to recover the structur
 *   when occurs a fault
 */
-void initLog(int numberPages);
+void initLog(int grain);
 void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPointer, int* headerPointerOffset, long safedPage);
 void recoverStructure(Element* father, Element* oldNext);
 void addLogEntry(Element* father, Element* oldNext, long page);

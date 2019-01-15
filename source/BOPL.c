@@ -20,6 +20,18 @@ Element* headerPointer = NULL;
 long workPage = 0;
 long safedPage = 0;
 
+/*
+*	Variables to save for graphs
+*/
+double* cvs_iteration_time = NULL;
+int* cvs_critical_path_flushs = NULL;
+
+struct timespec tstart={0,0}, tend={0,0};
+
+char nameTimeCVS[MAX_CSV_NAME];
+char nameFlushCVS[MAX_CSV_NAME];
+
+int numberOfIterations;
 
 int wordBytes = 0;
 
@@ -118,13 +130,23 @@ int listMode;
 	* program starts properlly
 	*/
 
-int bopl_init(long numberOfPages, int* grain, int mode)
+int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int probInsert, int probInplaceInsert, int probLookup, int probUpdate, int probRemove)
 {
 	int functionId = initBufferMapping(numberOfPages);
 
+	cvs_iteration_time = (double*) malloc(sizeof(int) * iterations);
+	cvs_critical_path_flushs = (int*) malloc(sizeof(int) * iterations);
+	numberOfIterations = iterations;
+
+	sprintf(nameTimeCVS, "%s%d_%d_%d_%d_%d_%d_%s", GRAPH_DIR, mode, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, TIME_GRAPH);
+	sprintf(nameFlushCVS, "%s%d_%d_%d_%d_%d_%d_%s", GRAPH_DIR, mode, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, FLUSH_GRAPH);
+
+	clock_gettime(CLOCK_MONOTONIC, &tstart);
+
 	switch(mode)
 	{
-		/*	This two modes use
+		/*
+		* This two modes use
 		*	the batching mechanism
 		*/
 		case HASH_MAP_MODE:
@@ -139,7 +161,6 @@ int bopl_init(long numberOfPages, int* grain, int mode)
 			exit(-1);
 			break;
 	}
-
 	return functionId;
 }
 
@@ -163,12 +184,18 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 		case FLUSH_ONLY_MODE:
 				forceFlush(newElement, sizeOfValue);
 				FLUSH(workingPointerOffset);
-				addElementInList(&headerPointer, newElement);
+				newElement = addElementInList(&headerPointer, newElement);
+				if(newElement->next != NULL)
+					FLUSH(newElement->next);
 				break;
 		default:
 				perror(BAD_INIT_ERROR);
 				exit(ERROR);
 	}
+
+	clock_gettime(CLOCK_MONOTONIC, &tend);
+	cvs_iteration_time[functionID - 1] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
 	functionID ++;
 }
 
@@ -200,6 +227,9 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 					exit(ERROR);
 		}
 
+		clock_gettime(CLOCK_MONOTONIC, &tend);
+		cvs_iteration_time[functionID - 1] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
 		functionID ++;
 }
 
@@ -214,15 +244,12 @@ void bopl_remove(long keyToRemove)
 	switch (listMode) {
 		case HASH_MAP_MODE:
 			  result = removeElementHashMap(keyToRemove, &headerPointer, workingPointer, workPage);
-				functionID ++;
 				break;
 		case UNDO_LOG_MODE:
 				result = removeElementUndoLog(keyToRemove, &headerPointer, workingPointer, workPage);
-				functionID ++;
 				break;
 		case FLUSH_ONLY_MODE:
 				 result = removeElementFlush(keyToRemove, &headerPointer, headerPointerOffset, buffer, workingPointer);
-			 	 functionID ++;
 				 *saveFunctionID = functionID;
 				 FLUSH(saveFunctionID);
 				break;
@@ -230,11 +257,13 @@ void bopl_remove(long keyToRemove)
 			perror(BAD_INIT_ERROR);
 			exit(ERROR);
 	}
+	clock_gettime(CLOCK_MONOTONIC, &tend);
+	cvs_iteration_time[functionID - 1] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
+	functionID ++;
 
 	if(result == ERROR)
 		perror(BOPL_REMOVE_ERROR);
-
-
 }
 
 
@@ -271,6 +300,16 @@ void bopl_close()
  	close(fileDescriptor);
  	close(workingPointerOffsetDescriptor);
  	close(headerPointerOffsetDescriptor);
+
+	FILE* timeCVS = fopen(nameTimeCVS, "w+");
+	int i;
+	fprintf(timeCVS, "time");
+	for(i = 0; i < numberOfIterations; i++)
+	{
+		fprintf(timeCVS, ",%f", cvs_iteration_time[i]);
+	}
+
+	fclose(timeCVS);
 }
 
 	/*
@@ -323,6 +362,9 @@ void* bopl_lookup(long key)
 			value = NULL;
 	}
 
+	clock_gettime(CLOCK_MONOTONIC, &tend);
+	cvs_iteration_time[functionID - 1] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
 	functionID ++;
 
 	return value;
@@ -354,6 +396,9 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 
 	if(result == ERROR)
 		perror(BOPL_UPDATE_ERROR);
+
+		clock_gettime(CLOCK_MONOTONIC, &tend);
+		cvs_iteration_time[functionID - 1] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
 
 	functionID ++;
 
@@ -429,7 +474,7 @@ void initMechanism(int* grain)
 	savePointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, savePointerOffsetDescriptor, 0);
 	dirtyPages = (uint32_t*) mmap(0,  sizeOfDirtyPagesFile, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
 
-	initLog(numberPages);
+	initLog(*grain);
 
 	if(!offsetFileCreated)
 		savePointer += *savePointerOffset;
@@ -440,16 +485,16 @@ void initMechanism(int* grain)
 	if (savePointer == NULL)
 		handle_error("mmap");
 
-    sem_init(&workingSemaphore, 0, 0);
+  sem_init(&workingSemaphore, 0, 0);
 
-    if(savePointer < workingPointer)
-    {
-        markPages();
-        recoverFromLog(&headerPointer, buffer, workingPointer, headerPointerOffset, safedPage);
-    }
-    disablePages();
+  if(savePointer < workingPointer)
+  {
+      markPages();
+      recoverFromLog(&headerPointer, buffer, workingPointer, headerPointerOffset, safedPage);
+  }
+  disablePages();
 
-    if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
+  if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
 		handle_error("pthreadCreate");
 }
 
@@ -465,8 +510,8 @@ void batchingTheFlushs(Element* nextPointer)
     while(toFlush <= nextPointer)
     {
     	FLUSH(toFlush);
-        //pmem_flush(flushPointer, wordBytes);
-        toFlush += wordBytes;
+      //pmem_flush(flushPointer, wordBytes);
+      toFlush = (Element*)((char*) toFlush) + wordBytes;
     }
     FLUSH(workingPointerOffset);
     savePointer = toFlush;
@@ -477,13 +522,23 @@ void batchingTheFlushs(Element* nextPointer)
         while(safedPage <= nextPage)
         {
             Epoch_Modification* epochModification = getEpochModifications(safedPage);
-            while(epochModification != NULL)
+            while(epochModification->modification != NULL)
             {
 								Element* father = epochModification->modification->father;
-                addLogEntry(father, father->next, safedPage);
-                father->next = epochModification->modification->newNext;
-                if(father->next != NULL)
-                    FLUSH(father->next);
+								if(father != NULL)
+								{
+									addLogEntry(father, father->next, safedPage);
+									father->next = epochModification->modification->newNext;
+									if(father->next != NULL)
+											FLUSH(father->next);
+								}
+								else
+								{
+									addLogEntry(NULL, headerPointer, safedPage);
+									headerPointer = epochModification->modification->newNext;
+									*headerPointerOffset = headerPointer - buffer;
+									FLUSH(headerPointerOffset);
+								}
 
                 epochModification = epochModification->next;
             }
@@ -512,6 +567,7 @@ void batchingTheFlushs(Element* nextPointer)
 					}
 					epochEntries = epochEntries->next;
 				}
+				safedPage ++;
 			}
 			flushFirstEntryOffset();
 		}
@@ -525,6 +581,7 @@ void batchingTheFlushs(Element* nextPointer)
 
 void* workingBatchThread(void* grain)
 {
+	Element* nextPage;
 	int granularity = *((int*) grain);
 
 	granularity = (granularity <= 0)?  1 : granularity;
@@ -533,16 +590,19 @@ void* workingBatchThread(void* grain)
 
 	while(!sem_wait(&workingSemaphore))
 	{
-		if(workingPointer >= savePointer + page_granularity)
+		if(workdone)
 		{
-			batchingTheFlushs(savePointer + page_granularity);
+			if(workingPointer >= savePointer)
+				batchingTheFlushs(workingPointer);
+
+			break;
 		}
 		else
 		{
-			if(workdone && workingPointer >= savePointer)
+			nextPage = savePointer + page_granularity;
+			if(workingPointer >= nextPage)
 			{
-				batchingTheFlushs(workingPointer);
-				break;
+				batchingTheFlushs(nextPage);
 			}
 		}
 	}
@@ -619,10 +679,10 @@ void disablePages()
 	int stopFlag = 0;
 	int bitArrayValue;
 
-	for(i = 0; i < numberPages ; i++)
+	for(i = 0; i < numberPages / BITS_PER_WORD; i++)
 		for(j = 0; j < BITS_PER_WORD; j++)
 		{
-			bitArrayValue = (dirtyPages[i] & (1 << j));
+			bitArrayValue = (dirtyPages[WORD_OFFSET(i)] & (1 << BIT_OFFSET(j)));
 			if(bitArrayValue != 0)
 				mprotect(buffer + (pageSize * ((i * BITS_PER_WORD) + j)), pageSize, PROT_NONE);
 
@@ -752,3 +812,10 @@ void checkThreshold(size_t sizeOfValue)
 		FLUSH(saveFunctionID);
 	}
 }
+
+
+/*
+*	This fnction creates csv files
+* and fill them wuth the propper
+* values
+*/

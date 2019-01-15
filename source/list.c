@@ -32,22 +32,22 @@ Element* addElementInListHash(Element** head, Element* toAdd)
 
 /**************************************************************/
 
-
+int element = 0;
 /***************      GENERATE ELEMENT     ********************/
 
 Element* generateElement(long key, size_t sizeOfValue, const void* value, Element** workingPointer)
 {
     Element* n =  *workingPointer;
-  	*workingPointer += sizeof(Element);
+  	*workingPointer += 1;
   	n->key = key;
   	n->sizeOfValue =  sizeOfValue;
 
   	n->value = (void*) *workingPointer;
     memmove(n->value, value, sizeOfValue);
-    *workingPointer += sizeOfValue;
+    *workingPointer = (Element*) ((char*) *workingPointer) + sizeOfValue;
 
     n->next = NULL;
-
+    element ++;
     return n;
 }
 /**************************************************************/
