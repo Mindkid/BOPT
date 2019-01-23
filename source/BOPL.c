@@ -134,7 +134,7 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 {
 	int functionId = initBufferMapping(numberOfPages);
 
-	cvs_iteration_time = (double*) malloc(sizeof(int) * iterations);
+	cvs_iteration_time = (double*) malloc(sizeof(double) * iterations);
 	cvs_critical_path_flushs = (int*) malloc(sizeof(int) * iterations);
 	numberOfIterations = iterations;
 
@@ -511,7 +511,7 @@ void batchingTheFlushs(Element* nextPointer)
     {
     	FLUSH(toFlush);
       //pmem_flush(flushPointer, wordBytes);
-      toFlush = (Element*)((char*) toFlush) + wordBytes;
+      toFlush = (Element*)(((char*) toFlush) + wordBytes);
     }
     FLUSH(workingPointerOffset);
     savePointer = toFlush;
@@ -599,7 +599,7 @@ void* workingBatchThread(void* grain)
 		}
 		else
 		{
-			nextPage = savePointer + page_granularity;
+			nextPage = (Element*) (((char*) savePointer) + page_granularity);
 			if(workingPointer >= nextPage)
 			{
 				batchingTheFlushs(nextPage);
@@ -778,10 +778,12 @@ int forceFlush(Element* toFlush, size_t sizeOfValue)
 	int sizeOfElement = sizeof(Element) + sizeOfValue;
 	Element* toStop = toFlush;
 
-	while(toFlush < toStop + sizeOfElement)
+	toStop = (Element*) (((char*) toStop) + sizeOfElement);
+
+	while(toFlush < toStop)
 	{
 		FLUSH(toFlush);
-	 	toFlush += wordBytes;
+	 	toFlush = (Element*) (((char*) toFlush) + wordBytes);
 	}
 
 	return 1;
