@@ -65,7 +65,7 @@ void closeLog()
 void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPointer, int* headerPointerOffset, long safedPage)
 {
     if(lastEntry != logEntries && lastEntry->oldNext == NULL)
-        lastEntry = lastEntry - sizeof(LogEntry);
+        lastEntry = lastEntry - 1;
 
     while(lastEntry->epoch_k > safedPage)
     {
@@ -90,7 +90,7 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
         }
 
         lastEntryOffset = (lastEntryOffset - 1) % numberOfEntries;
-        lastEntry = logEntries + (lastEntryOffset * sizeof(LogEntry));
+        lastEntry = logEntries + lastEntryOffset;
 
         *lastEntryOffsetPointer = lastEntryOffset;
         FLUSH(lastEntryOffsetPointer);
@@ -112,12 +112,16 @@ void addLogEntry(Element* father, Element* oldNext, long page)
   entry->oldNext = oldNext;
 
   lastEntryOffset = (lastEntryOffset + 1) % numberOfEntries;
-  lastEntry += sizeof(LogEntry) * lastEntryOffset;
+
+  if(lastEntryOffset)
+    lastEntry += 1;
+  else
+    lastEntry = logEntries;
 
   while(entry < lastEntry)
   {
       FLUSH(entry);
-      entry += wordBytes;
+      entry = (LogEntry*) (((char*) entry) + wordBytes);
   }
 
   *lastEntryOffsetPointer = lastEntryOffset;
@@ -154,7 +158,10 @@ LogEntries* getEpochEntries(long epoch)
     }
 
     firstEntryOffset = (firstEntryOffset + 1) % numberOfEntries;
-    firstEntry += sizeof(LogEntry) * firstEntryOffset;
+    if(firstEntryOffset)
+      firstEntry += 1 ;
+    else
+      firstEntry = logEntries;
   }
 
   return entries;

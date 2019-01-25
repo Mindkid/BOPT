@@ -16,6 +16,7 @@
 #include "list.h"
 #include "hashmap.h"
 #include "macroLib.h"
+#include "fileMacros.h"
 #include "errorMacroLib.h"
 #include "log.h"
 

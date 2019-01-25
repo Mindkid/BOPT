@@ -108,7 +108,8 @@ int main(int argc, char* argv[])
   {
     for(i = 0; i < NUMBER_OF_OPERATIONS; i++)
     {
-      prob_of_operation[i] = MAX_PROBABILITY / NUMBER_OF_OPERATIONS;
+      probability +=  MAX_PROBABILITY / NUMBER_OF_OPERATIONS;
+      prob_of_operation[i] =  probability;
     }
   }
 

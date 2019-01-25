@@ -23,15 +23,20 @@ long safedPage = 0;
 /*
 *	Variables to save for graphs
 */
-double* cvs_iteration_time = NULL;
-int* cvs_critical_path_flushs = NULL;
+double* csv_iteration_time = NULL;
+int* csv_critical_path_flushs = NULL;
 
 struct timespec tstart={0,0}, tend={0,0};
 
-char nameTimeCVS[MAX_CSV_NAME];
-char nameFlushCVS[MAX_CSV_NAME];
+char nameTimeCSV[MAX_CSV_NAME];
+char nameFlushCSV[MAX_CSV_NAME];
 
-int numberOfIterations;
+long numberOfInserts = 0;
+long numberOfInplaceInserts = 0;
+long numberOfRemoves = 0;
+long numberOfUpdates = 0;
+long numberOfLookups = 0;
+
 
 int wordBytes = 0;
 
@@ -42,14 +47,6 @@ int wordBytes = 0;
 int* savePointerOffset = 0;
 int* workingPointerOffset = 0;
 int* headerPointerOffset = 0;
-
-
-void handler(int sig, siginfo_t *si, void *unused);
-void initMechanism(int* grain);
-void checkThreshold(size_t sizeOfValue);
-int initBufferMapping(long numberOfPages);
-void disablePages();
-void markPages();
 
 /*
 *	This is the map where
@@ -118,6 +115,15 @@ int* saveFunctionID = NULL;
 */
 int listMode;
 
+
+void handler(int sig, siginfo_t *si, void *unused);
+void initMechanism(int* grain);
+void checkThreshold(size_t sizeOfValue);
+int initBufferMapping(long numberOfPages);
+void disablePages();
+void markPages();
+void writeGraphics(char* fileName, double* variableArray, char* operation);
+
 /*
 *	This are the function of the
 *	librarry BOPL this are the ones
@@ -134,14 +140,11 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 {
 	int functionId = initBufferMapping(numberOfPages);
 
-	cvs_iteration_time = (double*) malloc(sizeof(double) * iterations);
-	cvs_critical_path_flushs = (int*) malloc(sizeof(int) * iterations);
-	numberOfIterations = iterations;
+	csv_iteration_time = (double*) malloc(sizeof(double) * NUMBER_OF_OPERATIONS);
+	csv_critical_path_flushs = (int*) malloc(sizeof(int) * NUMBER_OF_OPERATIONS);
 
-	sprintf(nameTimeCVS, "%s%d_%d_%d_%d_%d_%d_%s", GRAPH_DIR, mode, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, TIME_GRAPH);
-	sprintf(nameFlushCVS, "%s%d_%d_%d_%d_%d_%d_%s", GRAPH_DIR, mode, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, FLUSH_GRAPH);
-
-	clock_gettime(CLOCK_MONOTONIC, &tstart);
+	sprintf(nameTimeCSV, "%s%d_%d_%s", GRAPH_DIR, mode, iterations, TIME_GRAPH);
+	sprintf(nameFlushCSV, "%s%d_%d_%s", GRAPH_DIR, mode, iterations, FLUSH_GRAPH);
 
 	switch(mode)
 	{
@@ -161,6 +164,7 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 			exit(-1);
 			break;
 	}
+		clock_gettime(CLOCK_MONOTONIC, &tstart);
 	return functionId;
 }
 
@@ -194,7 +198,8 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 	}
 
 	clock_gettime(CLOCK_MONOTONIC, &tend);
-	cvs_iteration_time[functionID - 1] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	csv_iteration_time[INSERT_INDEX] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	numberOfInserts ++;
 
 	functionID ++;
 }
@@ -228,7 +233,8 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 		}
 
 		clock_gettime(CLOCK_MONOTONIC, &tend);
-		cvs_iteration_time[functionID - 1] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+		csv_iteration_time[INPLACE_INSERT_INDEX] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+		numberOfInplaceInserts++;
 
 		functionID ++;
 }
@@ -258,7 +264,8 @@ void bopl_remove(long keyToRemove)
 			exit(ERROR);
 	}
 	clock_gettime(CLOCK_MONOTONIC, &tend);
-	cvs_iteration_time[functionID - 1] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	csv_iteration_time[REMOVE_INDEX] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	numberOfRemoves ++;
 
 	functionID ++;
 
@@ -301,15 +308,7 @@ void bopl_close()
  	close(workingPointerOffsetDescriptor);
  	close(headerPointerOffsetDescriptor);
 
-	FILE* timeCVS = fopen(nameTimeCVS, "w+");
-	int i;
-	fprintf(timeCVS, "time");
-	for(i = 0; i < numberOfIterations; i++)
-	{
-		fprintf(timeCVS, ",%f", cvs_iteration_time[i]);
-	}
-
-	fclose(timeCVS);
+	writeGraphics(nameTimeCSV, csv_iteration_time, "TIME");
 }
 
 	/*
@@ -363,7 +362,8 @@ void* bopl_lookup(long key)
 	}
 
 	clock_gettime(CLOCK_MONOTONIC, &tend);
-	cvs_iteration_time[functionID - 1] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	csv_iteration_time[LOOKUP_INDEX] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	numberOfLookups ++;
 
 	functionID ++;
 
@@ -397,8 +397,9 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 	if(result == ERROR)
 		perror(BOPL_UPDATE_ERROR);
 
-		clock_gettime(CLOCK_MONOTONIC, &tend);
-		cvs_iteration_time[functionID - 1] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	clock_gettime(CLOCK_MONOTONIC, &tend);
+	csv_iteration_time[UPDATE_INDEX] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	numberOfUpdates ++;
 
 	functionID ++;
 
@@ -821,3 +822,19 @@ void checkThreshold(size_t sizeOfValue)
 * and fill them wuth the propper
 * values
 */
+
+void writeGraphics(char* fileName, double* variableArray, char* variable)
+{
+	FILE* csvFile = fopen(fileName, "w+");
+
+	fprintf(csvFile, "%s,%s,%s\n", "OPERATION", variable, "OCCURENCES");
+	fprintf(csvFile, "%s,%f,%ld\n", INSERT_OPERATION, variableArray[INSERT_INDEX], numberOfInserts);
+	fprintf(csvFile, "%s,%f,%ld\n", INPLACE_INSERT_OPERATION, variableArray[INPLACE_INSERT_INDEX], numberOfInplaceInserts);
+	fprintf(csvFile, "%s,%f,%ld\n", REMOVE_OPERATION, variableArray[REMOVE_INDEX], numberOfRemoves);
+	fprintf(csvFile, "%s,%f,%ld\n", UPDATE_OPERATION, variableArray[UPDATE_INDEX], numberOfUpdates);
+	fprintf(csvFile, "%s,%f,%ld\n", LOOKUP_OPERATION, variableArray[LOOKUP_INDEX], numberOfLookups);
+
+	fclose(csvFile);
+
+	return;
+}

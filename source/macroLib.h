@@ -52,7 +52,7 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 /*
 * GRAPH RELATED VARIABLES
 */
-#define MAX_CSV_NAME 50
+#define MAX_CSV_NAME 100
 #define GRAPH_DIR "./graphs/"
 #define TIME_GRAPH "time.csv"
 #define FLUSH_GRAPH "flush.csv"

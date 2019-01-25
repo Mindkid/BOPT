@@ -34,10 +34,10 @@ void parseFile(char* file_location)
 {
   int numberOfLine = 0;
   long key;
-  char* token;
+  char* token = "";
   char* saveptr;
   FILE* fp;
-  char* line = NULL;
+  char* line = NULL; // alocar
   size_t len = 0;
   size_t read;
 
@@ -46,6 +46,7 @@ void parseFile(char* file_location)
   if(fp == NULL)
     exit(EXIT_FAILURE);
 
+  // passar para fgets
   while ((read = getline(&line, &len, fp)) != -1)
   {
     numberOfLine ++;
@@ -132,7 +133,8 @@ void parseFile(char* file_location)
                   {
                     puts("");
                     puts("-------------- ERROR --------------");
-                    printf("----- BAD FUNTION AT LINE %d ------\n", numberOfLine);
+                    printf("----- BAD FUNTION AT LINE: %d ------ \n", numberOfLine);
+                    printf("----- WITH TOKEN : %s ------ \n", token);
                     puts("-----------------------------------");
                     puts("");
                     exit(EXIT_FAILURE);
@@ -145,8 +147,8 @@ void parseFile(char* file_location)
       }
 
     }
+      free(line);
   }
-  free(line);
 }
 
 
