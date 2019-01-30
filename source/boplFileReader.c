@@ -5,6 +5,8 @@
 #include <getopt.h>
 #include <string.h>
 
+#define MAX_SIZE_OF_INSTRUCTIONS 50
+
 void parseFile(char* file_location);
 void help();
 
@@ -37,27 +39,25 @@ void parseFile(char* file_location)
   char* token = "";
   char* saveptr;
   FILE* fp;
-  char* line = NULL; // alocar
-  size_t len = 0;
-  size_t read;
-
+  char* line = (char*) malloc(sizeof(char) * MAX_SIZE_OF_INSTRUCTIONS);
+  
   fp = fopen(file_location, "r");
 
   if(fp == NULL)
     exit(EXIT_FAILURE);
 
   // passar para fgets
-  while ((read = getline(&line, &len, fp)) != -1)
+  while (fgets(line, MAX_SIZE_OF_INSTRUCTIONS, fp))
   {
     numberOfLine ++;
+
     token = strtok_r(line, FILE_DELIMITER, &saveptr);
-    line = NULL;
 
     if(strcmp(token, INSERT_OPERATION) == 0)
     {
-      key = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
-      size_t size = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-      int value = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
+      key = atol(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+      size_t size = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+      int value = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
 
       bopl_insert(key, size, &value);
     }
@@ -65,17 +65,17 @@ void parseFile(char* file_location)
     {
       if(strcmp(token, LOOKUP_OPERATION) == 0)
       {
-        key = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
+        key = atol(strtok_r(NULL, FILE_DELIMITER, &saveptr));
         bopl_lookup(key);
       }
       else
       {
         if(strcmp(token, INPLACE_INSERT_OPERATION) == 0)
         {
-          key = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
-          long fatherKey = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
-          size_t size = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-          int value = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
+          key = atol(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+          long fatherKey = atol(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+          size_t size = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+          int value = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
 
           bopl_inplace_insert(fatherKey, key, size, &value);
         }
@@ -83,16 +83,16 @@ void parseFile(char* file_location)
         {
           if(strcmp(token, REMOVE_OPERATION) == 0)
           {
-              key = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
+              key = atol(strtok_r(NULL, FILE_DELIMITER, &saveptr));
               bopl_remove(key);
           }
           else
           {
             if(strcmp(token, UPDATE_OPERATION) == 0)
             {
-              key = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
-              size_t size = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-              int value = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
+              key = atol(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+              size_t size = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+              int value = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
 
               bopl_update(key, size, &value);
             }
@@ -100,20 +100,20 @@ void parseFile(char* file_location)
             {
               if(strcmp(token, INIT_OPERATION) == 0)
               {
-                long numberOfPages = atol(strtok_r(line, FILE_DELIMITER, &saveptr));
-                int grain = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-                int mode = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-                int iterations = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-                int probInsert = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-                int probInplaceInsert = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-                int probLookup = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-                int probUpdate = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
-                int probRemove = atoi(strtok_r(line, FILE_DELIMITER, &saveptr));
+                long numberOfPages = atol(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+                int grain = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+                int mode = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+                int iterations = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+                int probInsert = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+                int probInplaceInsert = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+                int probLookup = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+                int probUpdate = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+                int probRemove = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
 
                 int functionID = bopl_init(numberOfPages, &grain, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove);
                 while (numberOfLine < functionID)
                 {
-                  getline(&line, &len, fp);
+                  fgets(line, MAX_SIZE_OF_INSTRUCTIONS, fp);
                   numberOfLine ++;
                 }
               }
@@ -147,8 +147,8 @@ void parseFile(char* file_location)
       }
 
     }
-      free(line);
   }
+  free(line);
 }
 
 

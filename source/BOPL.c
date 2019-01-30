@@ -825,6 +825,8 @@ void checkThreshold(size_t sizeOfValue)
 
 void writeGraphics(char* fileName, double* variableArray, char* variable)
 {
+	printf("File Name: %s\n", fileName);
+	printf("Number of Inserts: %ld\n", numberOfInserts);
 	FILE* csvFile = fopen(fileName, "w+");
 
 	fprintf(csvFile, "%s,%s,%s\n", "OPERATION", variable, "OCCURENCES");
