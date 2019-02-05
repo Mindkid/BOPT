@@ -22,23 +22,23 @@ long numberOfEntries = 0;
 
 void initLog(int grain)
 {
-  int sizeOfLog;
+  long sizeOfLog, sizeOfInt = sizeof(int);
   int offsetFileCreated = 1;
 
   numberOfEntries = grain * NUMBER_LOG_PER_PAGE;
 
   sizeOfLog = numberOfEntries * sizeof(LogEntry);
 
-  firstEntryOffsetDescriptor = openFile(&offsetFileCreated, FIRST_ENTRY_OFFSET_FILE_NAME, sizeof(int));
-  lastEntryOffsetDescriptor = openFile(&offsetFileCreated, LAST_ENTRY_OFFSET_FILE_NAME, sizeof(int));
-  logEntryDescriptor = openFile(&offsetFileCreated, LOG_FILE_NAME, sizeOfLog);
+  firstEntryOffsetDescriptor = openFile(&offsetFileCreated, FIRST_ENTRY_OFFSET_FILE_NAME, &sizeOfInt);
+  lastEntryOffsetDescriptor = openFile(&offsetFileCreated, LAST_ENTRY_OFFSET_FILE_NAME, &sizeOfInt);
+  logEntryDescriptor = openFile(&offsetFileCreated, LOG_FILE_NAME, &sizeOfLog);
 
   logEntries = (LogEntry*) mmap(0, sizeOfLog, PROT_READ | PROT_WRITE, MAP_SHARED, logEntryDescriptor, 0);
 
-  firstEntryOffsetPointer = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, firstEntryOffsetDescriptor, 0);
+  firstEntryOffsetPointer = (int*) mmap(0, sizeOfInt, PROT_READ | PROT_WRITE, MAP_SHARED, firstEntryOffsetDescriptor, 0);
   firstEntryOffset = *firstEntryOffsetPointer;
 
-  lastEntryOffsetPointer = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, lastEntryOffsetDescriptor, 0);
+  lastEntryOffsetPointer = (int*) mmap(0, sizeOfInt, PROT_READ | PROT_WRITE, MAP_SHARED, lastEntryOffsetDescriptor, 0);
   lastEntryOffset = *lastEntryOffsetPointer;
 
   firstEntry = logEntries + firstEntryOffset;

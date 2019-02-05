@@ -22,8 +22,7 @@ typedef struct Element
 
 
 /***************      ADD ELEMENT IN LIST     ****************/
-Element* addElementInList(Element** head, Element* toAdd);
-Element* addElementInListHash(Element** head, Element* toAdd);
+Element* addElementInList(Element** tailPointer, Element* toAdd);
 /**************************************************************/
 
 /***************      GENERATE ELEMENT     ********************/
@@ -38,29 +37,29 @@ Element* findFatherElement(Element* head, long sonKey);
 
 /*************      INPLACE INSERT FUNCTION    ****************/
           /*********** FLUSH_ONLY_MODE ****************/
-void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue, Element** headerPointer, int* headerPointerOffset, Element* buffer);
+void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue, Element** headerPointer, int* headerPointerOffset, Element* buffer, Element** tailPointer, int* tailPointerOffset);
 					/*********** UNDO_LOG_MODE ****************/
-void inplaceInsertUndoLog(long fatherKey, Element* newElement, Element** headerPointer, int workPage);
+void inplaceInsertUndoLog(long fatherKey, Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 					/*********** HASH_MAP_MODE ****************/
-void inplaceInsertHashMap(long fatherKey, Element* newElement, Element** headerPointer, int workPage );
+void inplaceInsertHashMap(long fatherKey, Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 /**************************************************************/
 
 /*****************      UPDATE FUNCTION    ********************/
           /*********** FLUSH_ONLY_MODE ****************/
-int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPointer, int* headerPointerOffset, Element* buffer);
+int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPointer, int* headerPointerOffset, Element* buffer, Element** tailPointer, int* tailPointerOffset);
 					/*********** UNDO_LOG_MODE ****************/
-int updateElementUndoLog(Element* newElement, Element** headerPointer, int workPage);
+int updateElementUndoLog(Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 					/*********** HASH_MAP_MODE ****************/
-int updateElementHashMap(Element* newElement, Element** headerPointer, int workPage);
+int updateElementHashMap(Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 /**************************************************************/
 
 /*****************      REMOVE FUNCTION    ********************/
           /*********** FLUSH_ONLY_MODE ****************/
-int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPointerOffset, Element* buffer, Element* workingPointer);
+int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPointerOffset, Element* buffer, Element* workingPointer, Element** tailPointer, int* tailPointerOffset);
 					/*********** UNDO_LOG_MODE ****************/
-int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage);
+int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 					/*********** HASH_MAP_MODE ****************/
-int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage);
+int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 /**************************************************************/
 
 #endif

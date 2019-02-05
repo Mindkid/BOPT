@@ -17,6 +17,7 @@
 #define SAVE_POINTER_OFFSET_FILE_NAME "../ramdisk/savePointerOffset.dat"
 #define WORKING_POINTER_OFFSET_FILE_NAME "../ramdisk/workingPointerOffset.dat"
 #define HEADER_POINTER_OFFSET_FILE_NAME "../ramdisk/headerPointerOffset.dat"
+#define TAIL_POINTER_OFFSET_FILE_NAME "../ramdisk/tailPointerOffset.dat"
 
 #define SAVE_FUNCTION_ID_FILE_NAME "../ramdisk/saveFunctionID.dat"
 

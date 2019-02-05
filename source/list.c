@@ -6,33 +6,23 @@ Element* findUpdatedFatherElement(Element* head, long sonKey);
 
 /***************      ADD ELEMENT IN LIST     ****************/
 
-Element* addElementInList(Element** head, Element* toAdd)
+Element* addElementInList(Element** tailPointer, Element* toAdd)
 {
 
-    Element* current = *head;
-
-    current = findElement(current, toAdd->key);
+    Element* current = *tailPointer;
 
     if(current->key != toAdd->key)
+    {
         current->next = toAdd;
-
-    return current;
-}
-
-Element* addElementInListHash(Element** head, Element* toAdd)
-{
-    Element* current = *head;
-    current = findUpdatedElement(current, toAdd->key);
-
-    if(current != toAdd)
-        current->next = toAdd;
+        *tailPointer = toAdd;
+    }
 
     return current;
 }
 
 /**************************************************************/
 
-int element = 0;
+
 /***************      GENERATE ELEMENT     ********************/
 
 Element* generateElement(long key, size_t sizeOfValue, const void* value, Element** workingPointer)
@@ -47,7 +37,6 @@ Element* generateElement(long key, size_t sizeOfValue, const void* value, Elemen
     *workingPointer = (Element*) ((char*) *workingPointer) + sizeOfValue;
 
     n->next = NULL;
-    element ++;
     return n;
 }
 /**************************************************************/
@@ -134,7 +123,7 @@ Element* findUpdatedFatherElement(Element* head, long sonKey)
 
           /*********** FLUSH_ONLY_MODE ****************/
 
-void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue, Element** headerPointer, int* headerPointerOffset, Element* buffer)
+void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue, Element** headerPointer, int* headerPointerOffset, Element* buffer, Element** tailPointer, int* tailPointerOffset)
 {
     Element* head = *headerPointer;
 
@@ -154,15 +143,21 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
 
         newElement->next = father->next;
         forceFlush(newElement, sizeOfValue);
-
         father->next = newElement;
         FLUSH(father->next);
+
+        if(newElement->next == NULL)
+        {
+          *tailPointerOffset = newElement - buffer;
+          FLUSH(tailPointerOffset);
+          *tailPointer = newElement;
+        }
    }
 }
 
           /*********** UNDO_LOG_MODE ****************/
 
-void inplaceInsertUndoLog(long fatherKey, Element* newElement, Element** headerPointer, int workPage)
+void inplaceInsertUndoLog(long fatherKey, Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer)
 {
     Element* head = *headerPointer;
 
@@ -178,10 +173,16 @@ void inplaceInsertUndoLog(long fatherKey, Element* newElement, Element** headerP
       newElement->next = father->next;
       addLogEntry(father, father->next, workPage);
       father->next = newElement;
+
+      if(newElement->next == NULL)
+      {
+        *tailPointerOffset = newElement - buffer;
+        *tailPointer = newElement;
+      }
    }
 }
       /*********** HASH_MAP_MODE ****************/
-void inplaceInsertHashMap(long fatherKey, Element* newElement, Element** headerPointer, int workPage )
+void inplaceInsertHashMap(long fatherKey, Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer)
 {
   Element* head = *headerPointer;
   head = getHead(head);
@@ -196,6 +197,11 @@ void inplaceInsertHashMap(long fatherKey, Element* newElement, Element** headerP
     Element* father = findUpdatedElement(head, fatherKey);
     newElement->next = getNextOf(father);
     addModification(workPage, father, newElement);
+    if(newElement->next == NULL)
+    {
+      *tailPointerOffset = newElement - buffer;
+      *tailPointer = newElement;
+    }
   }
 
 }
@@ -206,7 +212,7 @@ void inplaceInsertHashMap(long fatherKey, Element* newElement, Element** headerP
 /*****************      UPDATE FUNCTION    ********************/
           /*********** FLUSH_ONLY_MODE ****************/
 
-int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPointer, int* headerPointerOffset, Element* buffer)
+int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPointer, int* headerPointerOffset, Element* buffer, Element** tailPointer, int* tailPointerOffset)
 {
   int result = SUCCESS;
 
@@ -237,11 +243,19 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
       result = ERROR;
     }
   }
+
+  if(newSon->next == NULL)
+  {
+      *tailPointerOffset = newSon - buffer;
+      FLUSH(tailPointerOffset);
+      *tailPointer = newSon;
+  }
+
   return result;
 }
             /*********** UNDO_LOG_MODE ****************/
 
-int updateElementUndoLog(Element* newElement, Element** headerPointer, int workPage)
+int updateElementUndoLog(Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer)
 {
 	int result = SUCCESS;
   Element* head = *headerPointer;
@@ -266,12 +280,19 @@ int updateElementUndoLog(Element* newElement, Element** headerPointer, int workP
        result = ERROR;
     }
 	}
+
+  if(newElement->next == NULL)
+  {
+      *tailPointerOffset = newElement - buffer;
+      *tailPointer = newElement;
+  }
+
 	return result;
 }
 
             /*********** HASH_MAP_MODE ****************/
 
-int updateElementHashMap(Element* newElement, Element** headerPointer, int workPage)
+int updateElementHashMap(Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer)
 {
 	int result = SUCCESS;
   Element* head = *headerPointer;
@@ -295,6 +316,12 @@ int updateElementHashMap(Element* newElement, Element** headerPointer, int workP
 	       result = ERROR;
 	    }
 	}
+  if(newElement->next == NULL)
+  {
+      *tailPointerOffset = newElement - buffer;
+      *tailPointer = newElement;
+  }
+
 	return result;
 }
 
@@ -305,7 +332,7 @@ int updateElementHashMap(Element* newElement, Element** headerPointer, int workP
 /*****************      REMOVE FUNCTION    ********************/
           /*********** FLUSH_ONLY_MODE ****************/
 
-int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPointerOffset, Element* buffer, Element* workingPointer)
+int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPointerOffset, Element* buffer, Element* workingPointer, Element** tailPointer, int* tailPointerOffset)
 {
   int result = SUCCESS;
 
@@ -325,6 +352,13 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
           head = head->next;
       }
       *headerPointer = head;
+
+      if(head->next == NULL)
+      {
+        *tailPointerOffset = head - buffer;
+        FLUSH(tailPointerOffset);
+        *tailPointer = head;
+      }
   }
   else
   {
@@ -333,18 +367,27 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
       {
           father->next = father->next->next;
           if(father->next != NULL)
+          {
             FLUSH(father->next);
+          }
+          else
+          {
+            *tailPointerOffset = father - buffer;
+            FLUSH(tailPointerOffset);
+            *tailPointer = father;
+          }
       }
       else
       {
         result = ERROR;
       }
   }
+
   return result;
 }
             /*********** UNDO_LOG_MODE ****************/
 
-int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage)
+int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer)
 {
 		int result = SUCCESS;
     Element* head = *headerPointer;
@@ -362,6 +405,12 @@ int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* wor
         }
 
         *headerPointer = head ;
+
+        if(head->next == NULL)
+        {
+          *tailPointerOffset = head - buffer;
+          *tailPointer = head;
+        }
     }
     else
     {
@@ -370,9 +419,10 @@ int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* wor
       {
           addLogEntry(father, father->next, workPage);
           father->next = father->next->next;
-          if(father->next != NULL)
+          if(father->next == NULL)
           {
-              FLUSH(father->next);
+            *tailPointerOffset = father - buffer;
+            *tailPointer = father;
           }
       }
       else
@@ -384,7 +434,7 @@ int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* wor
 }
             /*********** HASH_MAP_MODE ****************/
 
-int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage)
+int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer)
 {
 		int result = SUCCESS;
     Element* head = *headerPointer;
@@ -394,9 +444,20 @@ int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* wor
     {
 				Element* trueHeadNext  = getNextOf(trueHead);
         if(trueHeadNext == NULL)
+        {
             addModification(workPage, 0, workingPointer);
+            *tailPointerOffset = workingPointer - buffer;
+            *tailPointer = workingPointer;
+        }
         else
+        {
             addModification(workPage, 0, trueHeadNext);
+            if(trueHeadNext->next == NULL)
+            {
+              *tailPointerOffset = trueHeadNext - buffer;
+              *tailPointer = trueHeadNext;
+            }
+        }
     }
     else
     {
@@ -405,6 +466,11 @@ int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* wor
         if(fatherSon != NULL)
         {
             addModification(workPage, father, getNextOf(fatherSon));
+            if(fatherSon->next == NULL)
+            {
+              *tailPointerOffset = fatherSon - buffer;
+              *tailPointer = fatherSon;
+            }
         }
         else
 		    {

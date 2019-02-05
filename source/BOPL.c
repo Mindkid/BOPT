@@ -7,11 +7,16 @@
 *	working pointer and the
 *	header pointer that points
 *	to the head of the list
+* and the tailPointer that
+* points to the tail of the
+* list
 */
+
 Element* buffer = NULL;
 Element* savePointer = NULL;
 Element* workingPointer = NULL;
 Element* headerPointer = NULL;
+Element* tailPointer = NULL;
 
 /*
 *   Represnts how many are
@@ -47,6 +52,7 @@ int wordBytes = 0;
 int* savePointerOffset = 0;
 int* workingPointerOffset = 0;
 int* headerPointerOffset = 0;
+int* tailPointerOffset  = 0;
 
 /*
 *	This is the map where
@@ -82,6 +88,7 @@ int fileDescriptor;
 int savePointerOffsetDescriptor;
 int workingPointerOffsetDescriptor;
 int headerPointerOffsetDescriptor;
+int tailPointerOffsetDescriptor;
 int dirtyPagesDescriptor;
 int saveFunctionIDDescriptor;
 
@@ -123,6 +130,7 @@ int initBufferMapping(long numberOfPages);
 void disablePages();
 void markPages();
 void writeGraphics(char* fileName, double* variableArray, char* operation);
+void printNumberOfOperations();
 
 /*
 *	This are the function of the
@@ -143,8 +151,9 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 	csv_iteration_time = (double*) malloc(sizeof(double) * NUMBER_OF_OPERATIONS);
 	csv_critical_path_flushs = (int*) malloc(sizeof(int) * NUMBER_OF_OPERATIONS);
 
-	sprintf(nameTimeCSV, "%s%d_%d_%s", GRAPH_DIR, mode, iterations, TIME_GRAPH);
-	sprintf(nameFlushCSV, "%s%d_%d_%s", GRAPH_DIR, mode, iterations, FLUSH_GRAPH);
+	sprintf(nameTimeCSV, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, TIME_GRAPH);
+	sprintf(nameFlushCSV, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, FLUSH_GRAPH);
+
 
 	switch(mode)
 	{
@@ -180,17 +189,21 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 
 	switch (listMode) {
 		case HASH_MAP_MODE:
-				addElementInListHash(&headerPointer, newElement);
-				break;
+				// DO NOTHING
 		case UNDO_LOG_MODE:
-				addElementInList(&headerPointer, newElement);
+				addElementInList(&tailPointer, newElement);
+				*tailPointerOffset = tailPointer - buffer;
 				break;
 		case FLUSH_ONLY_MODE:
 				forceFlush(newElement, sizeOfValue);
 				FLUSH(workingPointerOffset);
-				newElement = addElementInList(&headerPointer, newElement);
+				newElement = addElementInList(&tailPointer, newElement);
 				if(newElement->next != NULL)
 					FLUSH(newElement->next);
+				*tailPointerOffset = tailPointer - buffer;
+				FLUSH(tailPointerOffset);	
+				*saveFunctionID = functionID;
+				FLUSH(saveFunctionID);
 				break;
 		default:
 				perror(BAD_INIT_ERROR);
@@ -218,14 +231,16 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 		switch(listMode)
 		{
 			case UNDO_LOG_MODE:
-			    inplaceInsertUndoLog(fatherKey, newElement, &headerPointer, workPage);
+			    inplaceInsertUndoLog(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 				break;
 			case HASH_MAP_MODE:
-			    inplaceInsertHashMap(fatherKey, newElement, &headerPointer, workPage);
+			    inplaceInsertHashMap(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 				break;
 			case FLUSH_ONLY_MODE:
 	    		FLUSH(workingPointerOffset);
-					inplaceInsertFlush(fatherKey, newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer);
+					inplaceInsertFlush(fatherKey, newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
+					*saveFunctionID = functionID;
+					FLUSH(saveFunctionID);
 					break;
 			default:
 					perror(BAD_INIT_ERROR);
@@ -249,13 +264,13 @@ void bopl_remove(long keyToRemove)
 	int result;
 	switch (listMode) {
 		case HASH_MAP_MODE:
-			  result = removeElementHashMap(keyToRemove, &headerPointer, workingPointer, workPage);
+			  result = removeElementHashMap(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 				break;
 		case UNDO_LOG_MODE:
-				result = removeElementUndoLog(keyToRemove, &headerPointer, workingPointer, workPage);
+				result = removeElementUndoLog(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 				break;
 		case FLUSH_ONLY_MODE:
-				 result = removeElementFlush(keyToRemove, &headerPointer, headerPointerOffset, buffer, workingPointer);
+				 result = removeElementFlush(keyToRemove, &headerPointer, headerPointerOffset, buffer, workingPointer, &tailPointer, tailPointerOffset);
 				 *saveFunctionID = functionID;
 				 FLUSH(saveFunctionID);
 				break;
@@ -290,25 +305,34 @@ void bopl_close()
 		sem_post(&workingSemaphore);
 		pthread_join(workingThread, NULL);
 
-		munmap(saveFunctionID, sizeof(int));
+
 		munmap(savePointerOffset, sizeof(int));
 		munmap(dirtyPages, (numberPages/ BITS_PER_WORD));
 
 		close(dirtyPagesDescriptor);
 		close(savePointerOffsetDescriptor);
-		close(saveFunctionIDDescriptor);
+
 		closeLog();
 	}
 
+	*saveFunctionID = 0;
+	FLUSH(saveFunctionID);
+
+	munmap(saveFunctionID, sizeof(int));
 	munmap(buffer, (numberPages * pageSize));
 	munmap(workingPointerOffset, sizeof(int));
 	munmap(headerPointerOffset, sizeof(int));
+	munmap(tailPointerOffset, sizeof(int));
 
- 	close(fileDescriptor);
- 	close(workingPointerOffsetDescriptor);
+	close(fileDescriptor);
+	close(saveFunctionIDDescriptor);
+	close(workingPointerOffsetDescriptor);
  	close(headerPointerOffsetDescriptor);
+	close(tailPointerOffsetDescriptor);
 
 	writeGraphics(nameTimeCSV, csv_iteration_time, "TIME");
+
+	printNumberOfOperations();
 }
 
 	/*
@@ -345,7 +369,8 @@ void* bopl_lookup(long key)
 				value = result->value;
 				break;
 		case FLUSH_ONLY_MODE:
-				//DO NOTHING
+				*saveFunctionID = functionID;
+				FLUSH(saveFunctionID);
 		case UNDO_LOG_MODE:
 				result = findElement(headerPointer, key);
 				value = result->value;
@@ -381,13 +406,15 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 	{
 	    case FLUSH_ONLY_MODE:
 						FLUSH(workingPointerOffset);
-	        	result = updateElementFlush(newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer);
-	        	break;
+	        	result = updateElementFlush(newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
+						*saveFunctionID = functionID;
+						FLUSH(saveFunctionID);
+						break;
       case UNDO_LOG_MODE:
-            result = updateElementUndoLog(newElement, &headerPointer, workPage);
+            result = updateElementUndoLog(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
             break;
       case HASH_MAP_MODE:
-            result = updateElementHashMap(newElement, &headerPointer, workPage);
+            result = updateElementHashMap(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
             break;
 			default:
 						perror(BAD_INIT_ERROR);
@@ -423,7 +450,8 @@ int initBufferMapping(long numberOfPages)
 {
 	int offsetFileCreated = 1;
 
-	unsigned long sizeOfFile;
+	long sizeOfFile, sizeOfInt = sizeof(int);
+
 
 	pageSize = sysconf(_SC_PAGE_SIZE);
 	wordBytes = sysconf(_SC_WORD_BIT) / BITS_ON_A_BYTE;
@@ -432,18 +460,20 @@ int initBufferMapping(long numberOfPages)
 
 	sizeOfFile = (numberPages * pageSize);
 
-	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME, sizeOfFile);
-	workingPointerOffsetDescriptor = openFile(&offsetFileCreated, WORKING_POINTER_OFFSET_FILE_NAME, sizeof(int));
-	headerPointerOffsetDescriptor = openFile(&offsetFileCreated, HEADER_POINTER_OFFSET_FILE_NAME, sizeof(int));
-	saveFunctionIDDescriptor = openFile(&offsetFileCreated, SAVE_FUNCTION_ID_FILE_NAME, sizeof(int));
+	fileDescriptor = openFile(&offsetFileCreated, MAP_FILE_NAME, &sizeOfFile);
+	workingPointerOffsetDescriptor = openFile(&offsetFileCreated, WORKING_POINTER_OFFSET_FILE_NAME,  &sizeOfInt);
+	headerPointerOffsetDescriptor = openFile(&offsetFileCreated, HEADER_POINTER_OFFSET_FILE_NAME, &sizeOfInt);
+	tailPointerOffsetDescriptor = openFile(&offsetFileCreated, TAIL_POINTER_OFFSET_FILE_NAME,  &sizeOfInt);
+
+	saveFunctionIDDescriptor = openFile(&offsetFileCreated, SAVE_FUNCTION_ID_FILE_NAME, &sizeOfInt);
 
 	//buffer = (Element*) pmem_map_file(NULL, MAP_SIZE, PMEM_FILE_TMPFILE, O_TMPFILE, NULL, NULL);
 
 	buffer = (Element*) mmap((void*)MAP_ADDR, sizeOfFile, PROT_READ | PROT_WRITE, MAP_SHARED, fileDescriptor, 0);
-	workingPointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, workingPointerOffsetDescriptor, 0);
-	headerPointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, headerPointerOffsetDescriptor, 0);
-
-	saveFunctionID = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, saveFunctionIDDescriptor, 0);
+	workingPointerOffset = (int*) mmap(0,  sizeOfInt, PROT_READ | PROT_WRITE, MAP_SHARED, workingPointerOffsetDescriptor, 0);
+	headerPointerOffset = (int*) mmap(0, sizeOfInt, PROT_READ | PROT_WRITE, MAP_SHARED, headerPointerOffsetDescriptor, 0);
+	tailPointerOffset = (int*) mmap(0, sizeOfInt, PROT_READ | PROT_WRITE, MAP_SHARED, tailPointerOffsetDescriptor, 0);
+	saveFunctionID = (int*) mmap(0, sizeOfInt, PROT_READ | PROT_WRITE, MAP_SHARED, saveFunctionIDDescriptor, 0);
 
 	functionID = *saveFunctionID;
 
@@ -451,6 +481,8 @@ int initBufferMapping(long numberOfPages)
 	workingPointer += *workingPointerOffset;
 	headerPointer = buffer;
 	headerPointer += *headerPointerOffset;
+	tailPointer = buffer;
+	tailPointer += *tailPointerOffset;
 
 	return functionID;
 }
@@ -465,14 +497,15 @@ int initBufferMapping(long numberOfPages)
 void initMechanism(int* grain)
 {
 	int offsetFileCreated = 1;
-	int sizeOfDirtyPagesFile = (numberPages / BITS_PER_WORD);
+	long sizeOfDirtyPagesFile = (numberPages / BITS_PER_WORD);
+	long  sizeOfInt = sizeof(int);
 
-	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, sizeOfDirtyPagesFile);
-	savePointerOffsetDescriptor = openFile(&offsetFileCreated, SAVE_POINTER_OFFSET_FILE_NAME, sizeof(int));
+	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, &sizeOfDirtyPagesFile);
+	savePointerOffsetDescriptor = openFile(&offsetFileCreated, SAVE_POINTER_OFFSET_FILE_NAME, &sizeOfInt);
 
 	savePointer = buffer;
 
-	savePointerOffset = (int*) mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, savePointerOffsetDescriptor, 0);
+	savePointerOffset = (int*) mmap(0, sizeOfInt, PROT_READ | PROT_WRITE, MAP_SHARED, savePointerOffsetDescriptor, 0);
 	dirtyPages = (uint32_t*) mmap(0,  sizeOfDirtyPagesFile, PROT_READ | PROT_WRITE, MAP_SHARED, dirtyPagesDescriptor, 0);
 
 	initLog(*grain);
@@ -572,6 +605,8 @@ void batchingTheFlushs(Element* nextPointer)
 			}
 			flushFirstEntryOffset();
 		}
+
+		FLUSH(tailPointerOffset);
 
 		*saveFunctionID  = temporaryFunctionID;
 		FLUSH(saveFunctionID);
@@ -722,18 +757,22 @@ void writeThrash()
 	*	If the file doesn't exists it's
 	*	created with a given size
 	*/
-int openFile(int* created, char* fileName, long size)
+int openFile(int* created, char* fileName, long* size)
 {
 	int fd;
+	struct stat st;
+
 	if(access(fileName, F_OK) != -1)
 	{
     	fd = open(fileName, O_RDWR );
     	*created = 0;
+			stat(fileName, &st);
+			*size = st.st_size;
 	}
 	else
 	{
 	 	fd = open(fileName, O_RDWR | O_CREAT , S_IRWXU);
-		lseek(fd, size, SEEK_SET);
+		lseek(fd, *size, SEEK_SET);
 		write(fd, "", 1);
 	}
 	return fd;
@@ -826,7 +865,6 @@ void checkThreshold(size_t sizeOfValue)
 void writeGraphics(char* fileName, double* variableArray, char* variable)
 {
 	printf("File Name: %s\n", fileName);
-	printf("Number of Inserts: %ld\n", numberOfInserts);
 	FILE* csvFile = fopen(fileName, "w+");
 
 	fprintf(csvFile, "%s,%s,%s\n", "OPERATION", variable, "OCCURENCES");
@@ -839,4 +877,13 @@ void writeGraphics(char* fileName, double* variableArray, char* variable)
 	fclose(csvFile);
 
 	return;
+}
+
+void printNumberOfOperations()
+{
+	printf("Number of Inserts: %ld\n", numberOfInserts);
+	printf("Number of Inplace Inserts: %ld\n", numberOfInplaceInserts);
+	printf("Number of Lookups: %ld\n", numberOfLookups);
+	printf("Number of Updates: %ld\n", numberOfUpdates);
+	printf("Number of Removes: %ld\n", numberOfRemoves);
 }
