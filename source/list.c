@@ -28,19 +28,17 @@ Element* addElementInList(Element** tailPointer, Element* toAdd)
 Element* generateElement(long key, size_t sizeOfValue, const void* value, Element** workingPointer)
 {
     Element* n =  *workingPointer;
-  	*workingPointer += 1;
+
   	n->key = key;
   	n->sizeOfValue =  sizeOfValue;
-
-  	n->value = (void*) *workingPointer;
-    memmove(n->value, value, sizeOfValue);
-    *workingPointer = (Element*) ((char*) *workingPointer) + sizeOfValue;
-
     n->next = NULL;
+    memcpy(n->value, value, sizeOfValue);
+
+    *workingPointer = (Element*) (((char*) *workingPointer) + SIZEOF(n));
+
     return n;
 }
 /**************************************************************/
-
 /*********      SEARCH ELEMENT OR A FATHER     ****************/
 
 Element* findElement(Element* head, long key)
@@ -130,7 +128,7 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
     if(fatherKey == 0)
     {
       newElement->next = head;
-      forceFlush(newElement, sizeOfValue);
+      forceFlush(newElement);
 
       *headerPointerOffset = newElement - buffer;
 			FLUSH(headerPointerOffset);
@@ -142,7 +140,7 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
         Element* father = findElement(head, fatherKey);
 
         newElement->next = father->next;
-        forceFlush(newElement, sizeOfValue);
+        forceFlush(newElement);
         father->next = newElement;
         FLUSH(father->next);
 
@@ -220,7 +218,7 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
   if(head->key == newSon->key)
   {
     newSon->next = head->next;
-    forceFlush(newSon, sizeOfValue);
+    forceFlush(newSon);
 
     *headerPointerOffset = newSon - buffer;
     FLUSH(headerPointerOffset);
@@ -233,7 +231,7 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
     if(father->next != NULL)
     {
       newSon->next = father->next->next;
-      forceFlush(newSon, sizeOfValue);
+      forceFlush(newSon);
 
       father->next = newSon;
       FLUSH(father->next);

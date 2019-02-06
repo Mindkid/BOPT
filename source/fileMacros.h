@@ -21,6 +21,10 @@
 
 #define FILE_DELIMITER " "
 
-#define DEFAULT_FILE_NAME "defaultBenchmark.bopl"
+#define FILE_DIR "./tests/"
+#define DEFAULT_FILE_NAME "defaultBenchmark"
+#define FILE_EXTENSION ".bopl"
+#define MAX_FILE_NAME 200
+
 
 #endif

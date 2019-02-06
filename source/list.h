@@ -10,7 +10,7 @@ typedef struct Element
 {
 	long key;
 	size_t sizeOfValue;
-  void* value;
+  char value[1];
   struct Element* next;
 
 }Element;

@@ -1,5 +1,5 @@
 OPERATION,TIME,OCCURENCES
-insert,0.967678,1000000
+insert,1.056398,1000000
 inplace_insert,0.000000,0
 remove,0.000000,0
 update,0.000000,0

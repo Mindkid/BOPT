@@ -32,6 +32,7 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define READ_LATENCIE \
           do {} while(1)
 
+#define SIZEOF(element) sizeof(Element) + element->sizeOfValue  - 1
 /*
 *	The List can be operated in
 *	three modes:

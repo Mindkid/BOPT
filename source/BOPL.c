@@ -131,6 +131,7 @@ void disablePages();
 void markPages();
 void writeGraphics(char* fileName, double* variableArray, char* operation);
 void printNumberOfOperations();
+Element* createElement(long key, size_t sizeOfElement, void* value);
 
 /*
 *	This are the function of the
@@ -183,9 +184,7 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 	*/
 void bopl_insert(long key, size_t sizeOfValue, void* value)
 {
-	checkThreshold(sizeOfValue);
-	Element* newElement = generateElement(key, sizeOfValue, value, &workingPointer);
-	*workingPointerOffset = workingPointer - buffer;
+	Element* newElement = createElement(key, sizeOfValue, value);
 
 	switch (listMode) {
 		case HASH_MAP_MODE:
@@ -195,13 +194,13 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 				*tailPointerOffset = tailPointer - buffer;
 				break;
 		case FLUSH_ONLY_MODE:
-				forceFlush(newElement, sizeOfValue);
+				forceFlush(newElement);
 				FLUSH(workingPointerOffset);
 				newElement = addElementInList(&tailPointer, newElement);
 				if(newElement->next != NULL)
 					FLUSH(newElement->next);
 				*tailPointerOffset = tailPointer - buffer;
-				FLUSH(tailPointerOffset);	
+				FLUSH(tailPointerOffset);
 				*saveFunctionID = functionID;
 				FLUSH(saveFunctionID);
 				break;
@@ -224,9 +223,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 	*/
 void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new_value)
 {
-		checkThreshold(sizeOfValue);
-    Element* newElement = generateElement(key, sizeOfValue, new_value, &workingPointer);
-    *workingPointerOffset = workingPointer - buffer;
+		Element* newElement = createElement(key, sizeOfValue, new_value);
 
 		switch(listMode)
 		{
@@ -398,9 +395,7 @@ void* bopl_lookup(long key)
 int bopl_update(long key, size_t sizeOfValue, void* new_value)
 {
 	int result;
-	checkThreshold(sizeOfValue);
-	Element* newElement = generateElement(key, sizeOfValue, new_value, &workingPointer);
-	*workingPointerOffset = workingPointer - buffer;
+	Element* newElement = createElement(key, sizeOfValue, new_value);
 
 	switch(listMode)
 	{
@@ -601,6 +596,7 @@ void batchingTheFlushs(Element* nextPointer)
 					}
 					epochEntries = epochEntries->next;
 				}
+				free(epochEntries);
 				safedPage ++;
 			}
 			flushFirstEntryOffset();
@@ -650,7 +646,6 @@ void* workingBatchThread(void* grain)
 *	This are the functions related
 *	with the pages marking
 */
-
 
 	/*
 	* This funtion occours after
@@ -813,12 +808,9 @@ void handler(int sig, siginfo_t *si, void *unused)
 *	to force flush while in
 *	the FLUSH_ONLY_MODE mode
 */
-int forceFlush(Element* toFlush, size_t sizeOfValue)
+int forceFlush(Element* toFlush)
 {
-	int sizeOfElement = sizeof(Element) + sizeOfValue;
-	Element* toStop = toFlush;
-
-	toStop = (Element*) (((char*) toStop) + sizeOfElement);
+	Element* toStop = (Element*) (((char*) toFlush) + SIZEOF(toFlush));
 
 	while(toFlush < toStop)
 	{
@@ -830,6 +822,21 @@ int forceFlush(Element* toFlush, size_t sizeOfValue)
 }
 
 /*
+*	This functions generates a ELEMENT
+*	and checks if the struct passes a
+*	page boundary
+*/
+
+Element* createElement(long key, size_t sizeOfElement, void* value)
+{
+	checkThreshold(sizeOfElement);
+	Element* newElement = generateElement(key, sizeOfElement, value, &workingPointer);
+	*workingPointerOffset = workingPointer - buffer;
+
+	return newElement;
+}
+
+/*
 * This functions checks if a new
 * Element passes the threshhold,
 * if it does the new Element it's
@@ -838,13 +845,15 @@ int forceFlush(Element* toFlush, size_t sizeOfValue)
 
 void checkThreshold(size_t sizeOfValue)
 {
-	int lastPage =  getPointerPage(workingPointer);
-	int nextPage = getPointerPage(workingPointer + sizeof(Element) + sizeOfValue);
+	int sizeOfElement = sizeof(Element) + sizeOfValue - 1;
+	Element* nextPointer = (Element*) (((char*) workingPointer) + sizeOfElement);
 
-	if(lastPage < nextPage && listMode != FLUSH_ONLY_MODE)
+	int lastPage =  getPointerPage(workingPointer);
+	int nextPage = getPointerPage(nextPointer);
+
+	if(listMode != FLUSH_ONLY_MODE && lastPage < nextPage)
 	{
-		workingPointer += getLeftToFillPage(workingPointer);
-		temporaryFunctionID = functionID;
+		workingPointer = (Element*) (((char*) workingPointer) + getLeftToFillPage(workingPointer));
 		sem_post(&workingSemaphore);
 		workPage ++;
 	}

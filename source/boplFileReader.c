@@ -40,7 +40,7 @@ void parseFile(char* file_location)
   char* saveptr;
   FILE* fp;
   char* line = (char*) malloc(sizeof(char) * MAX_SIZE_OF_INSTRUCTIONS);
-  
+
   fp = fopen(file_location, "r");
 
   if(fp == NULL)
@@ -131,13 +131,20 @@ void parseFile(char* file_location)
                   }
                   else
                   {
-                    puts("");
-                    puts("-------------- ERROR --------------");
-                    printf("----- BAD FUNTION AT LINE: %d ------ \n", numberOfLine);
-                    printf("----- WITH TOKEN : %s ------ \n", token);
-                    puts("-----------------------------------");
-                    puts("");
-                    exit(EXIT_FAILURE);
+                    if(*token != '\n')
+                    {
+                      puts("");
+                      puts("-------------- ERROR --------------");
+                      printf("----- BAD FUNTION AT LINE: %d ------ \n", numberOfLine);
+                      printf("----- WITH TOKEN : %s ------ \n", token);
+                      puts("-----------------------------------");
+                      puts("");
+                      exit(EXIT_FAILURE);
+                    }
+                    else
+                    {
+                      numberOfLine --;
+                    }
                   }
                 }
               }

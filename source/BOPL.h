@@ -76,7 +76,7 @@ int openFile(int* created, char* fileName, long* size);
 *	to force flush while in
 *	the FLUSH_ONLY_MODE mode
 */
-int forceFlush(Element* toFlush, size_t sizeOfValue);
+int forceFlush(Element* toFlush);
 
 /**************************************************/
 #endif
