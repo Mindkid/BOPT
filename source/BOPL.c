@@ -122,7 +122,7 @@ int* saveFunctionID = NULL;
 */
 int listMode;
 
-
+void  setSignalHandler();
 void handler(int sig, siginfo_t *si, void *unused);
 void initMechanism(int* grain);
 void checkThreshold(size_t sizeOfValue);
@@ -147,6 +147,7 @@ Element* createElement(long key, size_t sizeOfElement, void* value);
 
 int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int probInsert, int probInplaceInsert, int probLookup, int probUpdate, int probRemove)
 {
+	setSignalHandler();
 	int functionId = initBufferMapping(numberOfPages);
 
 	csv_iteration_time = (double*) malloc(sizeof(double) * NUMBER_OF_OPERATIONS);
@@ -191,7 +192,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 				// DO NOTHING
 		case UNDO_LOG_MODE:
 				addElementInList(&tailPointer, newElement);
-				*tailPointerOffset = tailPointer - buffer;
+				*tailPointerOffset = SUBTRACT_POINTERS(tailPointer, buffer);
 				break;
 		case FLUSH_ONLY_MODE:
 				forceFlush(newElement);
@@ -199,7 +200,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 				newElement = addElementInList(&tailPointer, newElement);
 				if(newElement->next != NULL)
 					FLUSH(newElement->next);
-				*tailPointerOffset = tailPointer - buffer;
+				*tailPointerOffset = SUBTRACT_POINTERS(tailPointer, buffer);
 				FLUSH(tailPointerOffset);
 				*saveFunctionID = functionID;
 				FLUSH(saveFunctionID);
@@ -473,11 +474,14 @@ int initBufferMapping(long numberOfPages)
 	functionID = *saveFunctionID;
 
 	workingPointer = buffer;
-	workingPointer += *workingPointerOffset;
+	workingPointer = ADD_OFFSET_TO_POINTER(workingPointer, workingPointerOffset);
+	//workingPointer += *workingPointerOffset;
 	headerPointer = buffer;
-	headerPointer += *headerPointerOffset;
+	headerPointer = ADD_OFFSET_TO_POINTER(headerPointer, headerPointerOffset);
+	//headerPointer += *headerPointerOffset;
 	tailPointer = buffer;
-	tailPointer += *tailPointerOffset;
+	tailPointer = ADD_OFFSET_TO_POINTER(tailPointer, tailPointerOffset);
+	//tailPointer += *tailPointerOffset;
 
 	return functionID;
 }
@@ -506,7 +510,9 @@ void initMechanism(int* grain)
 	initLog(*grain);
 
 	if(!offsetFileCreated)
-		savePointer += *savePointerOffset;
+		savePointer = ADD_OFFSET_TO_POINTER(savePointer, savePointerOffset);
+
+	//savePointer += *savePointerOffset;
 
 	safedPage = getPointerPage(savePointer);
 	workPage = getPointerPage(workingPointer);
@@ -565,7 +571,7 @@ void batchingTheFlushs(Element* nextPointer)
 								{
 									addLogEntry(NULL, headerPointer, safedPage);
 									headerPointer = epochModification->modification->newNext;
-									*headerPointerOffset = headerPointer - buffer;
+									*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
 									FLUSH(headerPointerOffset);
 								}
 
@@ -586,7 +592,7 @@ void batchingTheFlushs(Element* nextPointer)
 					Element* father = epochEntries->entry->father;
 					if(father == NULL)
 					{
-						*headerPointerOffset = headerPointer - buffer;
+						*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
 	          FLUSH(headerPointerOffset);
 					}
 					else
@@ -607,7 +613,7 @@ void batchingTheFlushs(Element* nextPointer)
 		*saveFunctionID  = temporaryFunctionID;
 		FLUSH(saveFunctionID);
 
-    *savePointerOffset = savePointer - buffer;
+    *savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
     FLUSH(savePointerOffset);
 }
 
@@ -667,10 +673,10 @@ void markPages()
 
 	workingPointer = savePointer;
 
-	*workingPointerOffset = workingPointer - buffer;
+	*workingPointerOffset = SUBTRACT_POINTERS(workingPointer, buffer);
 	FLUSH(workingPointerOffset);
 
-	*savePointerOffset = savePointer - buffer;
+	*savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
 	FLUSH(savePointerOffset);
 }
 
@@ -792,11 +798,19 @@ void setSignalHandler()
 
 void handler(int sig, siginfo_t *si, void *unused)
 {
+	Element* finalOfBuffer = (Element*) (((char*) buffer) + (numberPages * pageSize));
+	Element* pointerMark = (Element*) (((char*) workingPointer) + sizeof(Element));
+
 	switch(sig)
 	{
  		case SIGBUS:
  			break;
 		case SIGSEGV:
+			if(pointerMark >= finalOfBuffer)
+			{
+				perror("Reached the final of the buffer");
+				exit(EXIT_FAILURE);
+			}
 			break;
 	}
 }
@@ -831,7 +845,7 @@ Element* createElement(long key, size_t sizeOfElement, void* value)
 {
 	checkThreshold(sizeOfElement);
 	Element* newElement = generateElement(key, sizeOfElement, value, &workingPointer);
-	*workingPointerOffset = workingPointer - buffer;
+	*workingPointerOffset = SUBTRACT_POINTERS(workingPointer, buffer);
 
 	return newElement;
 }

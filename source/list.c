@@ -130,7 +130,7 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
       newElement->next = head;
       forceFlush(newElement);
 
-      *headerPointerOffset = newElement - buffer;
+      *headerPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
 			FLUSH(headerPointerOffset);
 
 	    head = newElement;
@@ -146,7 +146,8 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
 
         if(newElement->next == NULL)
         {
-          *tailPointerOffset = newElement - buffer;
+          *tailPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
+          //*tailPointerOffset = ((char*) newElement - (char*) buffer);
           FLUSH(tailPointerOffset);
           *tailPointer = newElement;
         }
@@ -174,7 +175,7 @@ void inplaceInsertUndoLog(long fatherKey, Element* newElement, Element** headerP
 
       if(newElement->next == NULL)
       {
-        *tailPointerOffset = newElement - buffer;
+        *tailPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
         *tailPointer = newElement;
       }
    }
@@ -197,7 +198,7 @@ void inplaceInsertHashMap(long fatherKey, Element* newElement, Element** headerP
     addModification(workPage, father, newElement);
     if(newElement->next == NULL)
     {
-      *tailPointerOffset = newElement - buffer;
+      *tailPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
       *tailPointer = newElement;
     }
   }
@@ -220,7 +221,7 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
     newSon->next = head->next;
     forceFlush(newSon);
 
-    *headerPointerOffset = newSon - buffer;
+    *headerPointerOffset = SUBTRACT_POINTERS(newSon, buffer);
     FLUSH(headerPointerOffset);
 
     head = newSon;
@@ -244,7 +245,7 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
 
   if(newSon->next == NULL)
   {
-      *tailPointerOffset = newSon - buffer;
+      *tailPointerOffset = SUBTRACT_POINTERS(newSon, buffer);
       FLUSH(tailPointerOffset);
       *tailPointer = newSon;
   }
@@ -281,7 +282,7 @@ int updateElementUndoLog(Element* newElement, Element** headerPointer, int workP
 
   if(newElement->next == NULL)
   {
-      *tailPointerOffset = newElement - buffer;
+      *tailPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
       *tailPointer = newElement;
   }
 
@@ -316,7 +317,7 @@ int updateElementHashMap(Element* newElement, Element** headerPointer, int workP
 	}
   if(newElement->next == NULL)
   {
-      *tailPointerOffset = newElement - buffer;
+      *tailPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
       *tailPointer = newElement;
   }
 
@@ -339,13 +340,13 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
   {
       if(head->next == NULL)
       {
-          *headerPointerOffset = workingPointer - buffer;
+          *headerPointerOffset = SUBTRACT_POINTERS(workingPointer, buffer);
           FLUSH(headerPointerOffset);
           head = workingPointer;
       }
       else
       {
-          *headerPointerOffset = head->next - buffer;
+          *headerPointerOffset = SUBTRACT_POINTERS(head->next, buffer);
           FLUSH(headerPointerOffset);
           head = head->next;
       }
@@ -353,7 +354,7 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
 
       if(head->next == NULL)
       {
-        *tailPointerOffset = head - buffer;
+        *tailPointerOffset = SUBTRACT_POINTERS(head, buffer);
         FLUSH(tailPointerOffset);
         *tailPointer = head;
       }
@@ -370,7 +371,7 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
           }
           else
           {
-            *tailPointerOffset = father - buffer;
+            *tailPointerOffset = SUBTRACT_POINTERS(father, buffer);
             FLUSH(tailPointerOffset);
             *tailPointer = father;
           }
@@ -406,7 +407,7 @@ int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* wor
 
         if(head->next == NULL)
         {
-          *tailPointerOffset = head - buffer;
+          *tailPointerOffset = SUBTRACT_POINTERS(head, buffer);
           *tailPointer = head;
         }
     }
@@ -419,7 +420,7 @@ int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* wor
           father->next = father->next->next;
           if(father->next == NULL)
           {
-            *tailPointerOffset = father - buffer;
+            *tailPointerOffset = SUBTRACT_POINTERS(father, buffer);
             *tailPointer = father;
           }
       }
@@ -444,7 +445,7 @@ int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* wor
         if(trueHeadNext == NULL)
         {
             addModification(workPage, 0, workingPointer);
-            *tailPointerOffset = workingPointer - buffer;
+            *tailPointerOffset = SUBTRACT_POINTERS(workingPointer, buffer);
             *tailPointer = workingPointer;
         }
         else
@@ -452,7 +453,7 @@ int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* wor
             addModification(workPage, 0, trueHeadNext);
             if(trueHeadNext->next == NULL)
             {
-              *tailPointerOffset = trueHeadNext - buffer;
+              *tailPointerOffset = SUBTRACT_POINTERS(trueHeadNext, buffer);
               *tailPointer = trueHeadNext;
             }
         }
@@ -466,7 +467,7 @@ int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* wor
             addModification(workPage, father, getNextOf(fatherSon));
             if(fatherSon->next == NULL)
             {
-              *tailPointerOffset = fatherSon - buffer;
+              *tailPointerOffset = SUBTRACT_POINTERS(fatherSon, buffer);
               *tailPointer = fatherSon;
             }
         }

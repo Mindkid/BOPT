@@ -33,6 +33,9 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
           do {} while(1)
 
 #define SIZEOF(element) sizeof(Element) + element->sizeOfValue  - 1
+
+#define SUBTRACT_POINTERS(prt1, prt2) ((char*) prt1 - (char*) prt2)
+#define ADD_OFFSET_TO_POINTER(prt, offset)  (Element*) (((char*) prt) + *offset)
 /*
 *	The List can be operated in
 *	three modes:

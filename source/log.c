@@ -73,13 +73,13 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
         {
           if(lastEntry->oldNext == NULL)
           {
-            *headerPointerOffset = workingPointer - buffer;
+            *headerPointerOffset =  SUBTRACT_POINTERS(workingPointer, buffer);
             FLUSH(headerPointerOffset);
             *headerPointer = workingPointer;
           }
           else
           {
-            *headerPointerOffset = lastEntry->oldNext - buffer;
+            *headerPointerOffset = SUBTRACT_POINTERS(lastEntry->oldNext, buffer);
             FLUSH(headerPointerOffset);
             *headerPointer = lastEntry->oldNext;
           }
