@@ -69,8 +69,7 @@ void writeThrash();
 *	This are the function used by
 *	the bopl_init
 */
-int openFile(int* created, char* fileName, long* size);
-
+int openFile(int* created, char* fileName, unsigned long* size);
 /*
 *	Function that it's used
 *	to force flush while in

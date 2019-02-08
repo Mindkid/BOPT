@@ -67,6 +67,7 @@ uint32_t* dirtyPages = NULL;
 */
 long pageSize = 0;
 long numberPages = 1;
+unsigned long sizeOfFile = 0;
 /*
 *	This is the working thread
 *	this thread do the batchs
@@ -446,7 +447,7 @@ int initBufferMapping(long numberOfPages)
 {
 	int offsetFileCreated = 1;
 
-	long sizeOfFile, sizeOfInt = sizeof(int);
+	unsigned long sizeOfInt = sizeof(int);
 
 
 	pageSize = sysconf(_SC_PAGE_SIZE);
@@ -496,8 +497,8 @@ int initBufferMapping(long numberOfPages)
 void initMechanism(int* grain)
 {
 	int offsetFileCreated = 1;
-	long sizeOfDirtyPagesFile = (numberPages / BITS_PER_WORD);
-	long  sizeOfInt = sizeof(int);
+	unsigned long sizeOfDirtyPagesFile = (numberPages / BITS_PER_WORD);
+	unsigned long  sizeOfInt = sizeof(int);
 
 	dirtyPagesDescriptor = openFile(&offsetFileCreated, DIRTY_PAGES_FILE_NAME, &sizeOfDirtyPagesFile);
 	savePointerOffsetDescriptor = openFile(&offsetFileCreated, SAVE_POINTER_OFFSET_FILE_NAME, &sizeOfInt);
@@ -546,7 +547,7 @@ void batchingTheFlushs(Element* nextPointer)
     {
     	FLUSH(toFlush);
       //pmem_flush(flushPointer, wordBytes);
-      toFlush = (Element*)(((char*) toFlush) + wordBytes);
+      toFlush = ADD_OFFSET_TO_POINTER(toFlush, &wordBytes);
     }
     FLUSH(workingPointerOffset);
     savePointer = toFlush;
@@ -637,7 +638,7 @@ void* workingBatchThread(void* grain)
 		}
 		else
 		{
-			nextPage = (Element*) (((char*) savePointer) + page_granularity);
+			nextPage = ADD_OFFSET_TO_POINTER(savePointer, &page_granularity);
 			if(workingPointer >= nextPage)
 			{
 				batchingTheFlushs(nextPage);
@@ -687,7 +688,7 @@ void markPages()
 
 int getPointerPage(Element* pointer)
 {
-	int currentPage = (pointer - buffer) / pageSize;
+	int currentPage = SUBTRACT_POINTERS(pointer, buffer) / pageSize;
 	return currentPage;
 }
 
@@ -698,7 +699,7 @@ int getPointerPage(Element* pointer)
 
 int getLeftToFillPage(Element* pointer)
 {
-	int leftToFill = (pointer - buffer) % pageSize;
+	int leftToFill = pageSize - (SUBTRACT_POINTERS(pointer, buffer) % pageSize);
 	return leftToFill;
 }
 
@@ -712,7 +713,7 @@ int getLeftToFillPage(Element* pointer)
 
 void disablePages()
 {
-	int i, j;
+	int i, j, toIncrement;
 	int stopFlag = 0;
 	int bitArrayValue;
 
@@ -721,13 +722,16 @@ void disablePages()
 		{
 			bitArrayValue = (dirtyPages[WORD_OFFSET(i)] & (1 << BIT_OFFSET(j)));
 			if(bitArrayValue != 0)
-				mprotect(buffer + (pageSize * ((i * BITS_PER_WORD) + j)), pageSize, PROT_NONE);
-
+			{
+				toIncrement = pageSize * ((i * BITS_PER_WORD) + j);
+				mprotect(ADD_OFFSET_TO_POINTER(buffer, &toIncrement), pageSize, PROT_NONE);
+			}
 			if(!(stopFlag))
 			{
 				if(bitArrayValue != 0)
 				{
-					buffer += pageSize * ((i * BITS_PER_WORD) + j);
+					toIncrement = pageSize * ((i * BITS_PER_WORD) + j);
+					buffer = ADD_OFFSET_TO_POINTER(buffer, &toIncrement);
 				}
 				else
 				{
@@ -739,11 +743,12 @@ void disablePages()
 
 void writeThrash()
 {
+	int sizeOfElement =  sizeof(Element);
 	srandom(0);
 	while(savePointer <= workingPointer)
 	{
 		savePointer = (Element*) random();
-		savePointer += sizeof(Element);
+		savePointer = ADD_OFFSET_TO_POINTER(savePointer, &sizeOfElement);
 	}
 }
 
@@ -758,7 +763,7 @@ void writeThrash()
 	*	If the file doesn't exists it's
 	*	created with a given size
 	*/
-int openFile(int* created, char* fileName, long* size)
+int openFile(int* created, char* fileName, unsigned long* size)
 {
 	int fd;
 	struct stat st;
@@ -798,19 +803,12 @@ void setSignalHandler()
 
 void handler(int sig, siginfo_t *si, void *unused)
 {
-	Element* finalOfBuffer = (Element*) (((char*) buffer) + (numberPages * pageSize));
-	Element* pointerMark = (Element*) (((char*) workingPointer) + sizeof(Element));
-
 	switch(sig)
 	{
  		case SIGBUS:
+
  			break;
 		case SIGSEGV:
-			if(pointerMark >= finalOfBuffer)
-			{
-				perror("Reached the final of the buffer");
-				exit(EXIT_FAILURE);
-			}
 			break;
 	}
 }
@@ -824,12 +822,13 @@ void handler(int sig, siginfo_t *si, void *unused)
 */
 int forceFlush(Element* toFlush)
 {
-	Element* toStop = (Element*) (((char*) toFlush) + SIZEOF(toFlush));
+	unsigned long sizeOfElement = SIZEOF(toFlush);
+	Element* toStop = ADD_OFFSET_TO_POINTER(toFlush, &sizeOfElement);
 
 	while(toFlush < toStop)
 	{
 		FLUSH(toFlush);
-	 	toFlush = (Element*) (((char*) toFlush) + wordBytes);
+	 	toFlush = ADD_OFFSET_TO_POINTER(toFlush, &wordBytes);
 	}
 
 	return 1;
@@ -860,14 +859,24 @@ Element* createElement(long key, size_t sizeOfElement, void* value)
 void checkThreshold(size_t sizeOfValue)
 {
 	int sizeOfElement = sizeof(Element) + sizeOfValue - 1;
-	Element* nextPointer = (Element*) (((char*) workingPointer) + sizeOfElement);
+	int fillPage;
+
+	Element* nextPointer = ADD_OFFSET_TO_POINTER(workingPointer, &sizeOfElement);
+	Element* endOfBuffer = ADD_OFFSET_TO_POINTER(buffer, &sizeOfFile);
+
+	if(nextPointer > endOfBuffer)
+	{
+		fprintf(stderr, "End of buffer reached... \n");
+		exit(ERROR);
+	}
 
 	int lastPage =  getPointerPage(workingPointer);
 	int nextPage = getPointerPage(nextPointer);
 
 	if(listMode != FLUSH_ONLY_MODE && lastPage < nextPage)
 	{
-		workingPointer = (Element*) (((char*) workingPointer) + getLeftToFillPage(workingPointer));
+		fillPage = getLeftToFillPage(workingPointer);
+		workingPointer = ADD_OFFSET_TO_POINTER(workingPointer, &fillPage);
 		sem_post(&workingSemaphore);
 		workPage ++;
 	}

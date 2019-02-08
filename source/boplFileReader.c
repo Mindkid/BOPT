@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
           break;
         default:
           help();
-          exit(EXIT_FAILURE);
+          exit(ERROR);
     }
   }
   if(addedOpt == 0)
@@ -44,7 +44,7 @@ void parseFile(char* file_location)
   fp = fopen(file_location, "r");
 
   if(fp == NULL)
-    exit(EXIT_FAILURE);
+    exit(ERROR);
 
   // passar para fgets
   while (fgets(line, MAX_SIZE_OF_INSTRUCTIONS, fp))
@@ -111,7 +111,7 @@ void parseFile(char* file_location)
                 int probRemove = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
 
                 int functionID = bopl_init(numberOfPages, &grain, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove);
-                while (numberOfLine < functionID)
+                while (numberOfLine <= functionID)
                 {
                   fgets(line, MAX_SIZE_OF_INSTRUCTIONS, fp);
                   numberOfLine ++;
@@ -139,7 +139,7 @@ void parseFile(char* file_location)
                       printf("----- WITH TOKEN : %s ------ \n", token);
                       puts("-----------------------------------");
                       puts("");
-                      exit(EXIT_FAILURE);
+                      exit(ERROR);
                     }
                     else
                     {

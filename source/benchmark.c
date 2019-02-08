@@ -1,5 +1,6 @@
 #include "fileMacros.h"
 #include "macroLib.h"
+#include "errorMacroLib.h"
 #include "stack.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -90,7 +91,7 @@ int main(int argc, char* argv[])
         case 'h':
         default:
           help();
-          exit(EXIT_FAILURE);
+          exit(ERROR);
     }
   }
   if(probability > MAX_PROBABILITY)
@@ -98,7 +99,7 @@ int main(int argc, char* argv[])
     puts("");
     printf("The sum of the percentages can't be higher than %d %%", MAX_PROBABILITY);
     puts("");
-    exit(EXIT_FAILURE);
+    exit(ERROR);
   }
   if(probability == MIN_PROBALILITY)
   {

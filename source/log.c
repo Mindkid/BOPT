@@ -22,7 +22,7 @@ long numberOfEntries = 0;
 
 void initLog(int grain)
 {
-  long sizeOfLog, sizeOfInt = sizeof(int);
+  unsigned long sizeOfLog, sizeOfInt = sizeof(int);
   int offsetFileCreated = 1;
 
   numberOfEntries = grain * NUMBER_LOG_PER_PAGE;
