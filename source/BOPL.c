@@ -43,7 +43,7 @@ long numberOfUpdates = 0;
 long numberOfLookups = 0;
 
 
-int wordBytes = 0;
+int cacheLineSize = 0;
 
 /*
 *	This are the variables
@@ -451,7 +451,7 @@ int initBufferMapping(long numberOfPages)
 
 
 	pageSize = sysconf(_SC_PAGE_SIZE);
-	wordBytes = sysconf(_SC_WORD_BIT) / BITS_ON_A_BYTE;
+	cacheLineSize = sysconf (_SC_LEVEL1_DCACHE_LINESIZE);
 
 	numberPages = (numberOfPages > 0)? numberOfPages : numberPages;
 
@@ -546,8 +546,8 @@ void batchingTheFlushs(Element* nextPointer)
     while(toFlush <= nextPointer)
     {
     	FLUSH(toFlush);
-      //pmem_flush(flushPointer, wordBytes);
-      toFlush = ADD_OFFSET_TO_POINTER(toFlush, &wordBytes);
+      //pmem_flush(flushPointer, cacheLineSize);
+      toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
     }
     FLUSH(workingPointerOffset);
     savePointer = toFlush;
@@ -828,7 +828,7 @@ int forceFlush(Element* toFlush)
 	while(toFlush < toStop)
 	{
 		FLUSH(toFlush);
-	 	toFlush = ADD_OFFSET_TO_POINTER(toFlush, &wordBytes);
+	 	toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
 	}
 
 	return 1;
