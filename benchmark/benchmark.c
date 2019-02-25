@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
 	close(mapFd);
 	close(plotFd);
 	mapFd = openFile(MAP_FILE_NAME, fileSize);
-
+	int x;
 	if(testCacheHits)
 	{
 		map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 		{
 			for(element = 0; element < elementsInLine; element ++)
 			{
-				printf("this is int %d\n", *map);
+				x = *map;
 				map ++;
 			}
 		}
