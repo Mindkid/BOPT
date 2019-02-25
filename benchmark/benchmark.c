@@ -7,7 +7,7 @@
 
 #define NUMBER_CACHE_LINES 50
 
-#define ADD_OFFSET_TO_POINTER(prt, offset)  (int*) (((char*) prt) + *offset)
+#define ADD_OFFSET_TO_POINTER(prt, offset)  (int*) (((char*) prt) + offset)
 
 #define MAX_ELEMENTS_IN_LINE 16
 
@@ -22,14 +22,14 @@ void parceInput(int argc, char*argv[]);
 
 int main(int argc, char *argv[])
 {
-	int i, element, fd;
+	int i, element, plotFd;
 	struct timeval end_t, start_t;
 
 	int fileSize = NUMBER_CACHE_LINES * MAX_ELEMENTS_IN_LINE * sizeof(int);
 
 	int wordBytes = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 	int mapFd = openFile(MAP_FILE_NAME, fileSize);
-	int* map = (int*) mmap(NULL, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
+	int* map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
 
 	plotFd = openFile(plotName, fileSize);
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
 	if(testCacheHits)
 	{
-		map = (int*) mmap(NULL, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
+		map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
 		for(i = 0; i <  NUMBER_CACHE_LINES; i ++, ADD_OFFSET_TO_POINTER(map, wordBytes))
 		{
 			for(element = 0; element < elementsInLine; element ++)
