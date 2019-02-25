@@ -4,12 +4,25 @@
 #include <limits.h>
 #include <stdint.h>
 
+
+
 #define BITS_ON_A_BYTE 8
 
 #define handle_error(msg) \
            do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
-#define FLUSH(POINTER) asm("clflush (%0)" :: "r"(POINTER));
+#define SECONDS_OF_SLEEP 5
+
+#ifdef __CLFLUSHOPT__
+  #ifdef __CLWB__
+    extern int cacheMissed;
+    #define FLUSH(POINTER) (cacheMissed ? asm("clwb (%0)" :: "r"(POINTER)); : asm("clflushopt (%0)" :: "r"(POINTER));)
+  #else
+    #define FLUSH(POINTER) asm("clflushopt (%0)" :: "r"(POINTER));
+  #endif /*  __CLWB__  */
+#else
+  #define FLUSH(POINTER) asm("clflush (%0)" :: "r"(POINTER));
+#endif /* __CLFLUSHOPT__  */
 
 #define MAP_FILE_NAME "../ramdisk/mapFile.dat"
 #define MAP_ADDR 0x7f49dcfc0000

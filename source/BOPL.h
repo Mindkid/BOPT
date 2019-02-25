@@ -12,6 +12,10 @@
 #include <fcntl.h>
 #include <semaphore.h>
 #include <time.h>
+#include <sys/ioctl.h>
+#include <linux/perf_event.h>
+#include <linux/hw_breakpoint.h>
+#include <asm/unistd.h>
 //#include <libpmem.h>
 #include "list.h"
 #include "hashmap.h"

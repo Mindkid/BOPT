@@ -7,12 +7,14 @@
 
 #define NUMBER_CACHE_LINES 20
 
-#define MAX_ELEMENTS_IN_LINE 8
+#define ADD_OFFSET_TO_POINTER(prt, offset)  (Element*) (((char*) prt) + *offset)
+
+#define MAX_ELEMENTS_IN_LINE 16
 
 #define FLUSH(POINTER) asm("clflush (%0)" :: "r"(POINTER));
 
 char* plotName = PLOT_CLFLUSH_NAME;
-int elementsInLine = 1;
+int elementsInLine = MAX_ELEMENTS_IN_LINE;
 
 int testCacheHits = 0;
 
@@ -20,66 +22,45 @@ void parceInput(int argc, char*argv[]);
 
 int main(int argc, char *argv[])
 {
-	int i, element, gnuFd;
+	int i, element, fd;
 	struct timeval end_t, start_t;
-	
-	int wordBytes = sysconf(_SC_WORD_BIT);  
+
+	int fileSize = NUMBER_CACHE_LINES * MAX_ELEMENTS_IN_LINE * sizeof(int);
+
+	int wordBytes = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 	int mapFd = openFile(MAP_FILE_NAME, FILE_SIZE);
 	int* map = (int*) mmap(NULL, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
-	
-	parceInput(argc, argv);
-	wordBytes -=  elementsInLine * sizeof(int);
-	
-	gnuFd = openFile(plotName, FILE_SIZE);
-	
-	dprintf(gnuFd, "%c %c \n", 'X', 'Y');
-	
+
+	plotFd = openFile(plotName, fileSize);
+
+	dprintf(plotFd, "%c %c \n", 'X', 'Y');
+
 	gettimeofday(&start_t, NULL);
-	
-	for(i = 0; i <  NUMBER_CACHE_LINES; i ++, map += wordBytes)
+
+	for(i = 0; i <  NUMBER_CACHE_LINES; i ++, map = ADD_OFFSET_TO_POINTER(map, wordBytes))
 	{
 		for(element = 0; element < elementsInLine; element ++)
 		{
 			*map = 2;
-			map +=  sizeof(int);
+			map ++;
 		}
 		FLUSH(map);
-		writeDiffTime(gnuFd, i, start_t, end_t);
+		writeDiffTime(plotFd, i, start_t, end_t);
 	}
-	
+
 	if(testCacheHits)
 	{
 		map = (int*) mmap(NULL, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
-		for(i = 0; i <  NUMBER_CACHE_LINES; i ++, map += wordBytes)
+		for(i = 0; i <  NUMBER_CACHE_LINES; i ++, ADD_OFFSET_TO_POINTER(map, wordBytes))
 		{
 			for(element = 0; element < elementsInLine; element ++)
 			{
 				printf("this is int %d\n", *map);
-				map +=  sizeof(int);
+				map ++;
 			}
 		}
-		
+
 	}
 	close(mapFd);
 	close(gnuFd);
-}
-
-void parceInput(int argc, char*argv[])
-{
-	int i, elements;
-	char c;
-	while ((c = getopt (argc, argv, "re:")) != -1)
-	{
-		switch(c)
-		{
-			case 'e':
-				elements = atoi(optarg);
-				elementsInLine = (elements <= MAX_ELEMENTS_IN_LINE && elements > 0) ?  elements : elementsInLine;
-				break;
-			case 'r':
-				testCacheHits = 1;
-				break;
-				 
-		};
-	}
 }

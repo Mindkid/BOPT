@@ -15,7 +15,6 @@
            do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
 #define MAP_FILE_NAME "../ramdisk/map"
-#define FILE_SIZE 1024
 
 
 int openFile(char* fileName, int fileSize);

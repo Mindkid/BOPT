@@ -109,6 +109,34 @@ int functionID = 1;
 int temporaryFunctionID = 0;
 int* saveFunctionID = NULL;
 
+
+
+/*
+* Flag to be used if the
+* CLWB and the CLFLUSHOPT
+* exists
+*/
+
+#ifdef __CLFLUSHOPT__
+  #ifdef __CLWB__
+    int cacheMissed = 0;
+
+		void* checkCacheMissed(void* cacheEnvent)
+		{
+			int fd;
+			fd = perf_event_open(&cacheEnvent, 0, -1, -1, 0);
+
+			while(workdone)
+			{
+				sleep(SECONDS_OF_SLEEP);
+
+			}
+		}
+	#endif
+#endif
+
+
+
 /*
 *	The List can be operated in
 *	three mods:
@@ -133,7 +161,7 @@ void markPages();
 void writeGraphics(char* fileName, double* variableArray, char* operation);
 void printNumberOfOperations();
 Element* createElement(long key, size_t sizeOfElement, void* value);
-
+long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags);
 /*
 *	This are the function of the
 *	librarry BOPL this are the ones
@@ -168,6 +196,19 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 			initHashMode();
 		case UNDO_LOG_MODE:
 			initMechanism(grain);
+		//	#ifdef __CLFLUSHOPT__
+			//  #ifdef __CLWB__
+				struct perf_event_attr pe;
+				memset(&pe, 0, sizeof(struct perf_event_attr));
+				pe.type = PERF_TYPE_HARDWARE;
+				pe.size = sizeof(struct perf_event_attr);
+				pe.config = PERF_COUNT_HW_CACHE_MISSES | PERF_COUNT_HW_CACHE_REFERENCES;
+				pe.disabled = 1;
+				pe.exclude_kernel = 1;
+				pe.exclude_hv = 1;
+				int fd = perf_event_open(&pe, 0, -1, -1, 0);
+		//		#endif /* __CLWB__ */
+		//	#endid /* __CLFLUSHOPT__  */
 		case FLUSH_ONLY_MODE:
 			listMode = mode;
 			break;
@@ -918,4 +959,14 @@ void printNumberOfOperations()
 	printf("Number of Lookups: %ld\n", numberOfLookups);
 	printf("Number of Updates: %ld\n", numberOfUpdates);
 	printf("Number of Removes: %ld\n", numberOfRemoves);
+}
+
+
+long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
+{
+    int ret;
+
+   ret = syscall(__NR_perf_event_open, hw_event, pid, cpu,
+                   group_fd, flags);
+    return ret;
 }
