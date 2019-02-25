@@ -4,13 +4,11 @@ PLOTSDIR="./plots/*.dat"
 
 make
 
-while getopts "pre:" opt
+while getopts "pre" opt
 	do
 		case ${opt} in
 			e)
 				elem="-"${opt}
-				shift $((OPTIND+1))
-				number=${OPTARG}
 				;;
 			r)
 				checkRead="-"${opt}
@@ -23,9 +21,9 @@ while getopts "pre:" opt
 	done
 
 if [ ! -z "${checkRead}" ] ; then
-	perf stat -a -e LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,LLC-prefetch-misses ./benchmark.o ${checkRead} ${elem} ${number}
+	perf stat -a -e LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,LLC-prefetch-misses ./benchmark.o ${checkRead} ${elem} 
 else
-	./benchmark.o ${elem} ${number}
+	./benchmark.o ${elem} 
 fi
 
 if [ ! -z "${ploting}" ] ; then

@@ -1,17 +1,9 @@
- #include <stdio.h>
- #include <stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <immintrin.h>
 
-#ifdef __CLFLUSHOPT__
-
-#ifdef __CLWB__
-
-int test(){ return 9;}
-
-#else
-
-  int test(){ return 30;}
-
-#endif //END __CLWB__
+#ifdef __RDTSCP__
+  int test(){return 30;}
 
 #else // NOT __CLFLUSHOPT__
 
@@ -27,3 +19,4 @@ void main(char arg[])
   printf("this is the value %d;\n", x);
   return;
 }
+
