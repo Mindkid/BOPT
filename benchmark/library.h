@@ -16,6 +16,18 @@
 
 #define MAP_FILE_NAME "../ramdisk/map"
 
+#define PLOT_CLFLUSH_NAME "clflush"
+#define PLOT_CLFLUSHOPT_NAME "clflushopt"
+#define PLOT_CLWB_NAME "clwb"
+
+#define NUMBER_CACHE_LINES 5000
+#define PLOT_NAME_MAX 50
+#define PLOT_EXTENSION ".dat"
+#define PLOT_DIRECTORY "./plots/"
+
+#define ADD_OFFSET_TO_POINTER(prt, offset)  (int*) (((char*) prt) + offset)
+
+#define FLUSH(POINTER) asm("clwb (%0)" :: "r"(POINTER));
 
 int openFile(char* fileName, int fileSize);
 void writeDiffTime(int fileFD, int node,  struct timeval start_t, struct timeval end_t);
