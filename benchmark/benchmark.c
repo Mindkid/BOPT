@@ -16,7 +16,7 @@
 char* plotName = PLOT_CLFLUSH_NAME;
 int elementsInLine = MAX_ELEMENTS_IN_LINE;
 
-int testCacheHits = 0;
+int testCacheHits = 1;
 
 void parceInput(int argc, char*argv[]);
 
@@ -31,13 +31,13 @@ int main(int argc, char *argv[])
 	int mapFd = openFile(MAP_FILE_NAME, fileSize);
 	int* map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
 
-	plotFd = openFile(plotName, fileSize);
+	plotFd = openFile(plotName, NUMBER_CACHE_LINES * MAX_ELEMENTS_IN_LINE);
 
-	dprintf(plotFd, "%c %c \n", 'X', 'Y');
+	dprintf(plotFd, "X Y\n");
 
 	gettimeofday(&start_t, NULL);
 
-	for(i = 0; i <  NUMBER_CACHE_LINES; i ++, map = ADD_OFFSET_TO_POINTER(map, wordBytes))
+	for(i = 0; i <  NUMBER_CACHE_LINES; i ++)
 	{
 		for(element = 0; element < elementsInLine; element ++)
 		{
@@ -48,10 +48,14 @@ int main(int argc, char *argv[])
 		writeDiffTime(plotFd, i, start_t, end_t);
 	}
 
+	close(mapFd);
+	close(plotFd);
+	mapFd = openFile(MAP_FILE_NAME, fileSize);
+
 	if(testCacheHits)
 	{
 		map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
-		for(i = 0; i <  NUMBER_CACHE_LINES; i ++, ADD_OFFSET_TO_POINTER(map, wordBytes))
+		for(i = 0; i <  NUMBER_CACHE_LINES; i ++)
 		{
 			for(element = 0; element < elementsInLine; element ++)
 			{
@@ -62,5 +66,5 @@ int main(int argc, char *argv[])
 
 	}
 	close(mapFd);
-	close(plotFd);
+
 }
