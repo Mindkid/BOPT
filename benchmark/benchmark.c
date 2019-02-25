@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 	int mapFd = openFile(MAP_FILE_NAME, fileSize);
 	int* map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
 
-	plotFd = openFile(plotName, NUMBER_CACHE_LINES * MAX_ELEMENTS_IN_LINE);
+	plotFd = open(plotName, O_RDWR | O_CREAT , S_IRWXU);
 
 	dprintf(plotFd, "X Y\n");
 
