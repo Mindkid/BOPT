@@ -27,7 +27,7 @@ typedef struct LogEntries
 	struct LogEntries* next;
 }LogEntries;
 
-extern int wordBytes;
+extern int cacheLineSize;
 /*
 *   Function that it's used
 *   to recover the structur

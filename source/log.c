@@ -121,7 +121,7 @@ void addLogEntry(Element* father, Element* oldNext, long page)
   while(entry < lastEntry)
   {
       FLUSH(entry);
-      entry = (LogEntry*) (((char*) entry) + wordBytes);
+      entry = (LogEntry*) ADD_OFFSET_TO_POINTER(entry, cacheLineSize);
   }
 
   *lastEntryOffsetPointer = lastEntryOffset;
