@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 				break;
 		}
 	}
-	sprintf(plotName, "%s%s-%d%s", PLOT_DIRECTORY, PLOT_CLWB_NAME, iterations, PLOT_EXTENSION);
+	sprintf(plotName, "%s%s-%d%s", PLOT_DIRECTORY, PLOT_CLFLUSHOPT_NAME, iterations, PLOT_EXTENSION);
 
 	plotFd = open(plotName, O_RDWR | O_CREAT , S_IRWXU);
 

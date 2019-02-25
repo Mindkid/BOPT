@@ -27,7 +27,7 @@
 
 #define ADD_OFFSET_TO_POINTER(prt, offset)  (int*) (((char*) prt) + offset)
 
-#define FLUSH(POINTER) asm("clwb (%0)" :: "r"(POINTER));
+#define FLUSH(POINTER) asm("clflushopt (%0)" :: "r"(POINTER));
 
 int openFile(char* fileName, int fileSize);
 void writeDiffTime(int fileFD, int node,  struct timeval start_t, struct timeval end_t);
