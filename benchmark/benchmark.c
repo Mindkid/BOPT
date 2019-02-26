@@ -11,6 +11,7 @@ int main(int argc, char *argv[])
 	char opt;
 	int i, element, plotFd, elementsInLine;
 	int iterations;
+	int x;
 	int cacheTest = 0;
 
 	struct timeval end_t, start_t;
@@ -26,9 +27,6 @@ int main(int argc, char *argv[])
 			case 'i':
 				iterations = (atoi(optarg) <= 0)? NUMBER_CACHE_LINES : atoi(optarg);
 				break;
-			case 'r':
-				cacheTest = 1;
-				break;
 			case 'h':
 			default:
 				help();
@@ -42,44 +40,33 @@ int main(int argc, char *argv[])
 	int fileSize = iterations * elementsInLine * sizeof(int);
 	int mapFd = openFile(MAP_FILE_NAME, fileSize);
 	int* map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
-
+	int* toFlush = map;
 	gettimeofday(&start_t, NULL);
 
 	for(i = 0; i <  iterations; i ++)
 	{
 		for(element = 0; element < elementsInLine; element ++)
 		{
-			*map = 2;
-			map ++;
+			*toFlush = 2;
+			toFlush ++;
 		}
 		FLUSH(map);
 		writeDiffTime(plotFd, i, start_t, end_t);
+		for(element = 0; element < elementsInLine; element ++)
+		{
+			x = *map;
+			map ++;
+		}
 	}
 
 	close(mapFd);
 	close(plotFd);
-	if(cacheTest)
-	{
-		mapFd = openFile(MAP_FILE_NAME, fileSize);
-		int x;
-		map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
-		for(i = 0; i <  iterations; i ++)
-		{
-			for(element = 0; element < elementsInLine; element ++)
-			{
-				x = *map;
-				map ++;
-			}
-		}
-		close(mapFd);
-	}
 }
 
 void help()
 {
 	puts("Commands:");
 	puts("\t-i iter : number of iterations to test.");
-	puts("\t-r : used to test besides perf.");
 	puts("\t-h : see help.");
 
 }
