@@ -19,11 +19,6 @@ int main(int argc, char *argv[])
 	int wordBytes = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 	elementsInLine = wordBytes / sizeof(int);
 
-	int fileSize = NUMBER_CACHE_LINES * elementsInLine * sizeof(int);
-
-	int mapFd = openFile(MAP_FILE_NAME, fileSize);
-	int* map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
-
 	while((opt = getopt(argc, argv, "ri:")) != -1)
   {
     switch(opt)
@@ -41,14 +36,16 @@ int main(int argc, char *argv[])
 		}
 	}
 	sprintf(plotName, "%s%s-%d%s", PLOT_DIRECTORY, PLOT_CLFLUSHOPT_NAME, iterations, PLOT_EXTENSION);
-
 	plotFd = open(plotName, O_RDWR | O_CREAT , S_IRWXU);
-
 	dprintf(plotFd, "X Y\n");
+
+	int fileSize = iterations * elementsInLine * sizeof(int);
+	int mapFd = openFile(MAP_FILE_NAME, fileSize);
+	int* map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
 
 	gettimeofday(&start_t, NULL);
 
-	for(i = 0; i <  NUMBER_CACHE_LINES; i ++)
+	for(i = 0; i <  iterations; i ++)
 	{
 		for(element = 0; element < elementsInLine; element ++)
 		{
@@ -66,7 +63,7 @@ int main(int argc, char *argv[])
 		mapFd = openFile(MAP_FILE_NAME, fileSize);
 		int x;
 		map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
-		for(i = 0; i <  NUMBER_CACHE_LINES; i ++)
+		for(i = 0; i <  iterations; i ++)
 		{
 			for(element = 0; element < elementsInLine; element ++)
 			{
