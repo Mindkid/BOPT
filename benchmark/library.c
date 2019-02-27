@@ -1,7 +1,7 @@
 #include "library.h"
 
 
-int openFile(char* fileName, int fileSize)
+int openFile(char* fileName, long fileSize)
 {
 	int fd;
 	if(access(fileName, F_OK) != -1)

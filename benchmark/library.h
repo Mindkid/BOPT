@@ -32,7 +32,7 @@
 
 #define FLUSH(POINTER) asm("clflush (%0)" :: "r"(POINTER));
 #define FENCE asm("sfence");
-int openFile(char* fileName, int fileSize);
+int openFile(char* fileName, long fileSize);
 void writeDiffTime(int fileFD, int node,  struct timeval start_t, struct timeval end_t);
 
 #endif
