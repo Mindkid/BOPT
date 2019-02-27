@@ -13,7 +13,9 @@ int main(int argc, char *argv[])
 	int i, j, element, plotFd, elementsInLine;
 	int iterations, x;
 	int nTimes = 1;
-	int cacheTest = 0;
+	int makePlot = 0;
+	
+	long* timeOfIterations;
 
 	struct timeval end_t, start_t;
 
@@ -21,16 +23,20 @@ int main(int argc, char *argv[])
 	int wordBytes = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 	elementsInLine = wordBytes / sizeof(int);
 
-	while((opt = getopt(argc, argv, "ri:")) != -1)
+	while((opt = getopt(argc, argv, "t:i:ph")) != -1)
   {
     switch(opt)
     {
 			case 'i':
 				iterations = (atoi(optarg) <= 0)? NUMBER_CACHE_LINES : atoi(optarg);
+				printf("iterations: %d\n", iterations);
 				break;
 			case 't':
 				nTimes = atoi(optarg);
+				printf("nTimes: %d\n", nTimes); 
 				break;
+			case 'p':
+				makePlot = 1;
 			case 'h':
 			default:
 				help();
@@ -38,10 +44,8 @@ int main(int argc, char *argv[])
 		}
 	}
 	sprintf(mapName, "%s-%d", MAP_FILE_NAME, nTimes);
-	sprintf(plotName, "%s%s-%d-%d%s", PLOT_DIRECTORY, PLOT_CLFLUSH_NAME, iterations, nTimes, PLOT_EXTENSION);
 
-	plotFd = open(plotName, O_RDWR | O_CREAT , S_IRWXU);
-	dprintf(plotFd, "X Y\n");
+	timeOfIterations = (long*) malloc(iterations * sizeof(long));
 
 	int fileSize = iterations * elementsInLine * sizeof(int);
 	int mapFd = openFile(mapName, fileSize);
@@ -58,13 +62,25 @@ int main(int argc, char *argv[])
 		}
 		FLUSH(map);
 		FENCE;
-		writeDiffTime(plotFd, i, start_t, end_t);
 		x = *map;
 		map = toFlush;
+		gettimeofday(&end_t, NULL);
+		timeOfIterations[i] = end_t.tv_usec - start_t.tv_usec;
 	}
-
 	close(mapFd);
-	close(plotFd);
+
+	if(makePlot)
+	{
+		sprintf(plotName, "%s%s-%d-%d%s", PLOT_DIRECTORY, PLOT_CLWB_NAME, iterations, nTimes, PLOT_EXTENSION);
+	        plotFd = open(plotName, O_RDWR | O_CREAT , S_IRWXU);
+		dprintf(plotFd, "X Y\n");
+		for(i = 0; i < iterations; i++)
+		{
+			dprintf(plotFd, "%d %ld", i, timeOfIterations[i]);
+		}
+		close(plotFd);
+	}
+	free(timeOfIterations);
 
 }
 
@@ -73,6 +89,7 @@ void help()
 	puts("Commands:");
 	puts("\t-i iter : number of iterations to test.");
 	puts("\t-t times : number of times to test the functions.");
+	puts("\t-p : to make plots");
 	puts("\t-h : see help.");
 
 }

@@ -4,7 +4,7 @@ PLOTSDIR="./plots/*.dat"
 
 make
 
-while getopts "i:t:" opt; do
+while getopts "i:t:p" opt; do
 		case ${opt} in
 			i)
 				iterations="-"${opt}" "${OPTARG}
@@ -13,14 +13,17 @@ while getopts "i:t:" opt; do
 				nTimes=${OPTARG}
 				paramNTimes="-"${opt}" "
 				;;
+			p)
+				plot="-"${opt}
 		esac
 
 	done
 
 for((i=0; i<${nTimes}; i++))
 do
-	paramNTimes=${paramNTimes}${i}
-	perf stat -a -e LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,LLC-prefetch-misses ./benchmark.o paramNTimes iterations
+	fileId=${paramNTimes}${i}
+	perf stat -a -e LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,LLC-prefetch-misses ./benchmark.o ${fileId} ${iterations} ${plot}
+	rm -f ../ramdisk/*
 done
 
 : <<'END_COMMENT'

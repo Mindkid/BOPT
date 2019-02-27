@@ -10,7 +10,7 @@ int openFile(char* fileName, int fileSize)
 	{
 	 	fd = open(fileName, O_RDWR | O_CREAT , S_IRWXU);
 		lseek(fd, fileSize -1, SEEK_SET);
-		write(fd, "", 1);
+		int x =  write(fd, "", 1);
 	}
 	if(fd == -1)
 		handle_error("fopen");
