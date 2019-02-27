@@ -47,10 +47,11 @@ int main(int argc, char *argv[])
 
 	timeOfIterations = (long*) malloc(iterations * sizeof(long));
 
-  unsigned long fileSize = iterations * elementsInLine * sizeof(int);
+  	unsigned long fileSize = iterations * elementsInLine * sizeof(int);
 	int mapFd = openFile(mapName, fileSize);
 	int* map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
 	int* toFlush = map;
+	int* toMunMap = map;
 	gettimeofday(&start_t, NULL);
 
 	for(i = 0; i <  iterations; i ++)
@@ -67,7 +68,7 @@ int main(int argc, char *argv[])
 		gettimeofday(&end_t, NULL);
 		timeOfIterations[i] = end_t.tv_usec - start_t.tv_usec;
 	}
-	munmap(map, fileSize);
+	munmap(toMunMap, fileSize);
 	close(mapFd);
 
 	if(makePlot)
