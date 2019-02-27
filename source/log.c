@@ -74,12 +74,14 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
           if(lastEntry->oldNext == NULL)
           {
             *headerPointerOffset =  SUBTRACT_POINTERS(workingPointer, buffer);
+            LATENCIE(WRITE_DELAY);
             FLUSH(headerPointerOffset);
             *headerPointer = workingPointer;
           }
           else
           {
             *headerPointerOffset = SUBTRACT_POINTERS(lastEntry->oldNext, buffer);
+            LATENCIE(WRITE_DELAY);
             FLUSH(headerPointerOffset);
             *headerPointer = lastEntry->oldNext;
           }
@@ -93,6 +95,7 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
         lastEntry = logEntries + lastEntryOffset;
 
         *lastEntryOffsetPointer = lastEntryOffset;
+        LATENCIE(WRITE_DELAY);
         FLUSH(lastEntryOffsetPointer);
     }
 }
@@ -122,9 +125,11 @@ void addLogEntry(Element* father, Element* oldNext, long page)
   {
       FLUSH(entry);
       entry = (LogEntry*) ADD_OFFSET_TO_POINTER(entry, cacheLineSize);
+      LATENCIE(WRITE_DELAY);
   }
 
   *lastEntryOffsetPointer = lastEntryOffset;
+  LATENCIE(WRITE_DELAY);
   FLUSH(lastEntryOffsetPointer);
 }
 

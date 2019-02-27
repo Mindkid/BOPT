@@ -131,6 +131,7 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
       forceFlush(newElement);
 
       *headerPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
+      LATENCIE(WRITE_DELAY);
 			FLUSH(headerPointerOffset);
 
 	    head = newElement;
@@ -142,12 +143,14 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
         newElement->next = father->next;
         forceFlush(newElement);
         father->next = newElement;
+        LATENCIE(WRITE_DELAY);
         FLUSH(father->next);
 
         if(newElement->next == NULL)
         {
           *tailPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
           //*tailPointerOffset = ((char*) newElement - (char*) buffer);
+          LATENCIE(WRITE_DELAY);
           FLUSH(tailPointerOffset);
           *tailPointer = newElement;
         }
@@ -221,6 +224,7 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
     newSon->next = head->next;
     forceFlush(newSon);
 
+    LATENCIE(WRITE_DELAY);
     *headerPointerOffset = SUBTRACT_POINTERS(newSon, buffer);
     FLUSH(headerPointerOffset);
 
@@ -234,6 +238,7 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
       newSon->next = father->next->next;
       forceFlush(newSon);
 
+      LATENCIE(WRITE_DELAY);
       father->next = newSon;
       FLUSH(father->next);
     }
@@ -246,6 +251,7 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
   if(newSon->next == NULL)
   {
       *tailPointerOffset = SUBTRACT_POINTERS(newSon, buffer);
+      LATENCIE(WRITE_DELAY);
       FLUSH(tailPointerOffset);
       *tailPointer = newSon;
   }
@@ -341,12 +347,14 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
       if(head->next == NULL)
       {
           *headerPointerOffset = SUBTRACT_POINTERS(workingPointer, buffer);
+          LATENCIE(WRITE_DELAY);
           FLUSH(headerPointerOffset);
           head = workingPointer;
       }
       else
       {
           *headerPointerOffset = SUBTRACT_POINTERS(head->next, buffer);
+          LATENCIE(WRITE_DELAY);
           FLUSH(headerPointerOffset);
           head = head->next;
       }
@@ -355,6 +363,7 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
       if(head->next == NULL)
       {
         *tailPointerOffset = SUBTRACT_POINTERS(head, buffer);
+        LATENCIE(WRITE_DELAY);
         FLUSH(tailPointerOffset);
         *tailPointer = head;
       }
@@ -367,11 +376,13 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
           father->next = father->next->next;
           if(father->next != NULL)
           {
+            LATENCIE(WRITE_DELAY);
             FLUSH(father->next);
           }
           else
           {
             *tailPointerOffset = SUBTRACT_POINTERS(father, buffer);
+            LATENCIE(WRITE_DELAY);
             FLUSH(tailPointerOffset);
             *tailPointer = father;
           }

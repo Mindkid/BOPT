@@ -1,8 +1,8 @@
 CC=gcc -g
 
 benchmark.o: benchmark.c library.h library.c
-	rm ../ramdisk/map
+	rm -f ../ramdisk/*
 	$(CC) library.c benchmark.c -o benchmark.o
-       
+
 clean:
 	rm *.o

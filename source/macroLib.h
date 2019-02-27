@@ -3,8 +3,8 @@
 
 #include <limits.h>
 #include <stdint.h>
-
-
+#include <immintrin.h>
+#include <inttypes.h>
 
 #define BITS_ON_A_BYTE 8
 
@@ -15,8 +15,7 @@
 
 #ifdef __CLFLUSHOPT__
   #ifdef __CLWB__
-    extern int cacheMissed;
-    #define FLUSH(POINTER) (cacheMissed ? asm("clwb (%0)" :: "r"(POINTER)); : asm("clflushopt (%0)" :: "r"(POINTER));)
+    #define FLUSH(POINTER)  asm("clwb (%0)" :: "r"(POINTER));
   #else
     #define FLUSH(POINTER) asm("clflushopt (%0)" :: "r"(POINTER));
   #endif /*  __CLWB__  */
@@ -39,11 +38,10 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 
-#define WRITE_LATENCIE \
-          do {} while(1)
+#define WRITE_DELAY 0
+#define READ_DELAY 0
 
-#define READ_LATENCIE \
-          do {} while(1)
+#define LATENCIE(DELAY) int64_t time = __rdtsc(); while(__rdtsc() - time < DELAY);
 
 #define SIZEOF(element) sizeof(Element) + element->sizeOfValue  - 1
 

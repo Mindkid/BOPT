@@ -4,32 +4,30 @@ PLOTSDIR="./plots/*.dat"
 
 make
 
-while getopts "pre" opt
-	do
+while getopts "i:t:" opt; do
 		case ${opt} in
-			e)
-				elem="-"${opt}
+			i)
+				iterations="-"${opt}" "${OPTARG}
 				;;
-			r)
-				checkRead="-"${opt}
-				;;
-			p)
-				ploting=${opt}
+			t)
+				nTimes=${OPTARG}
+				paramNTimes="-"${opt}" "
 				;;
 		esac
-			
+
 	done
 
-if [ ! -z "${checkRead}" ] ; then
-	perf stat -a -e LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,LLC-prefetch-misses ./benchmark.o ${checkRead} ${elem} 
-else
-	./benchmark.o ${elem} 
-fi
+for((i=0; i<${nTimes}; i++))
+do
+	paramNTimes=${paramNTimes}${i}
+	perf stat -a -e LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,LLC-prefetch-misses ./benchmark.o paramNTimes iterations
+done
 
-if [ ! -z "${ploting}" ] ; then
+: <<'END_COMMENT'
+	if [ ! -z "${ploting}" ] ; then
 	for FILE in $PLOTSDIR
 	do
-		gnuplot <<-LABEL 
+		gnuplot <<-LABEL
 			set xlabel "Time (ms)"
 			set ylabel "Nodes"
 			set title "Time Performance"
@@ -39,4 +37,4 @@ if [ ! -z "${ploting}" ] ; then
 		LABEL
 	done
 fi
-
+END_COMMENT
