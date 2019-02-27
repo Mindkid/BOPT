@@ -1,4 +1,4 @@
-CC=gcc -g -O3 -march=native
+CC=gcc -g  -march=native
 
 benchmark.o: benchmark.c library.h library.c
 	rm -f ../ramdisk/*

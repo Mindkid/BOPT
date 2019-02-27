@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 	int iterations, x;
 	int nTimes = 1;
 	int makePlot = 0;
-	
+
 	long* timeOfIterations;
 
 	struct timeval end_t, start_t;
@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 				break;
 			case 't':
 				nTimes = atoi(optarg);
-				printf("nTimes: %d\n", nTimes); 
+				printf("nTimes: %d\n", nTimes);
 				break;
 			case 'p':
 				makePlot = 1;
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
 	timeOfIterations = (long*) malloc(iterations * sizeof(long));
 
-	int fileSize = iterations * elementsInLine * sizeof(int);
+  unsigned long fileSize = iterations * elementsInLine * sizeof(int);
 	int mapFd = openFile(mapName, fileSize);
 	int* map = (int*) mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, mapFd, 0);
 	int* toFlush = map;
@@ -67,12 +67,13 @@ int main(int argc, char *argv[])
 		gettimeofday(&end_t, NULL);
 		timeOfIterations[i] = end_t.tv_usec - start_t.tv_usec;
 	}
+	munmap(map, fileSize);
 	close(mapFd);
 
 	if(makePlot)
 	{
 		sprintf(plotName, "%s%s-%d-%d%s", PLOT_DIRECTORY, PLOT_CLWB_NAME, iterations, nTimes, PLOT_EXTENSION);
-	        plotFd = open(plotName, O_RDWR | O_CREAT , S_IRWXU);
+	  plotFd = open(plotName, O_RDWR | O_CREAT , S_IRWXU);
 		dprintf(plotFd, "X Y\n");
 		for(i = 0; i < iterations; i++)
 		{
