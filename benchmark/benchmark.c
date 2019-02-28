@@ -29,11 +29,9 @@ int main(int argc, char *argv[])
     {
 			case 'i':
 				iterations = (atoi(optarg) <= 0)? NUMBER_CACHE_LINES : atoi(optarg);
-				printf("iterations: %d\n", iterations);
 				break;
 			case 't':
 				nTimes = atoi(optarg);
-				printf("nTimes: %d\n", nTimes);
 				break;
 			case 'p':
 				makePlot = 1;

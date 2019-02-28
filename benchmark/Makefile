@@ -1,4 +1,4 @@
-CC=gcc -g  -march=native
+ CC=gcc -g -O3 -march=native -mtune=native 
 
 benchmark.o: benchmark.c library.h library.c
 	rm -f ../ramdisk/*
@@ -6,3 +6,4 @@ benchmark.o: benchmark.c library.h library.c
 
 clean:
 	rm *.o
+
