@@ -74,14 +74,14 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
           if(lastEntry->oldNext == NULL)
           {
             *headerPointerOffset =  SUBTRACT_POINTERS(workingPointer, buffer);
-            LATENCIE(WRITE_DELAY);
+            latency(WRITE_DELAY);
             FLUSH(headerPointerOffset);
             *headerPointer = workingPointer;
           }
           else
           {
             *headerPointerOffset = SUBTRACT_POINTERS(lastEntry->oldNext, buffer);
-            LATENCIE(WRITE_DELAY);
+            latency(WRITE_DELAY);
             FLUSH(headerPointerOffset);
             *headerPointer = lastEntry->oldNext;
           }
@@ -95,7 +95,7 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
         lastEntry = logEntries + lastEntryOffset;
 
         *lastEntryOffsetPointer = lastEntryOffset;
-        LATENCIE(WRITE_DELAY);
+        latency(WRITE_DELAY);
         FLUSH(lastEntryOffsetPointer);
     }
 }
@@ -123,14 +123,16 @@ void addLogEntry(Element* father, Element* oldNext, long page)
 
   while(entry < lastEntry)
   {
+      latency(WRITE_DELAY);
       FLUSH(entry);
-      entry = (LogEntry*) ADD_OFFSET_TO_POINTER(entry, cacheLineSize);
-      LATENCIE(WRITE_DELAY);
+      entry = (LogEntry*) ADD_OFFSET_TO_POINTER(entry, &cacheLineSize);
+      numberFlushsPerOperation ++;
   }
 
   *lastEntryOffsetPointer = lastEntryOffset;
-  LATENCIE(WRITE_DELAY);
+  latency(WRITE_DELAY);
   FLUSH(lastEntryOffsetPointer);
+  numberFlushsPerOperation ++;
 }
 
 LogEntries* getEpochEntries(long epoch)
@@ -176,4 +178,5 @@ void flushFirstEntryOffset()
 {
   *firstEntryOffsetPointer = firstEntryOffset;
   FLUSH(firstEntryOffsetPointer);
+  numberFlushsPerOperation++;
 }

@@ -28,6 +28,7 @@ typedef struct LogEntries
 }LogEntries;
 
 extern int cacheLineSize;
+extern int numberFlushsPerOperation;
 /*
 *   Function that it's used
 *   to recover the structur

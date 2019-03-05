@@ -3,8 +3,7 @@
 
 #include <limits.h>
 #include <stdint.h>
-#include <immintrin.h>
-#include <inttypes.h>
+
 
 #define BITS_ON_A_BYTE 8
 
@@ -13,15 +12,16 @@
 
 #define SECONDS_OF_SLEEP 5
 
-#ifdef __CLFLUSHOPT__
-  #ifdef __CLWB__
-    #define FLUSH(POINTER)  asm("clwb (%0)" :: "r"(POINTER));
-  #else
-    #define FLUSH(POINTER) asm("clflushopt (%0)" :: "r"(POINTER));
-  #endif /*  __CLWB__  */
+#ifdef __CLWB__
+  #define FLUSH(POINTER)  asm("clwb (%0)" :: "r"(POINTER));
+
 #else
-  #define FLUSH(POINTER) asm("clflush (%0)" :: "r"(POINTER));
-#endif /* __CLFLUSHOPT__  */
+  #ifdef __CLFLUSHOPT__
+    #define FLUSH(POINTER) asm("clflushopt (%0)" :: "r"(POINTER));
+  #else
+    #define FLUSH(POINTER) asm("clflush (%0)" :: "r"(POINTER));
+  #endif /* __CLFLUSHOPT__  */
+#endif /*  __CLWB__  */
 
 #define MAP_FILE_NAME "../ramdisk/mapFile.dat"
 #define MAP_ADDR 0x7f49dcfc0000
@@ -38,10 +38,13 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 
-#define WRITE_DELAY 0
-#define READ_DELAY 0
-
-#define LATENCIE(DELAY) int64_t time = __rdtsc(); while(__rdtsc() - time < DELAY);
+#ifdef __STT_RAM__
+  #define WRITE_DELAY 100
+  #define READ_DELAY 100
+#else
+  #define WRITE_DELAY 300
+  #define READ_DELAY 300
+#endif
 
 #define SIZEOF(element) sizeof(Element) + element->sizeOfValue  - 1
 
@@ -64,7 +67,6 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define UNDO_LOG_MODE 1
 #define HASH_MAP_MODE 2
 
-
 /*
 * GRAPH RELATED VARIABLES
 */
@@ -72,4 +74,5 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define GRAPH_DIR "./graphs/"
 #define TIME_GRAPH "time.csv"
 #define FLUSH_GRAPH "flush.csv"
+
 #endif

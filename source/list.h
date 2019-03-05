@@ -20,6 +20,7 @@ typedef struct Element
 #include "errorMacroLib.h"
 #include "BOPL.h"
 
+extern int numberFlushsPerOperation;
 
 /***************      ADD ELEMENT IN LIST     ****************/
 Element* addElementInList(Element** tailPointer, Element* toAdd);

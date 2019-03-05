@@ -29,9 +29,11 @@ long safedPage = 0;
 *	Variables to save for graphs
 */
 double* csv_iteration_time = NULL;
-int* csv_critical_path_flushs = NULL;
+double* csv_critical_path_flushs = NULL;
 
 struct timespec tstart={0,0}, tend={0,0};
+int numberFlushsPerOperation = 0;
+
 
 char nameTimeCSV[MAX_CSV_NAME];
 char nameFlushCSV[MAX_CSV_NAME];
@@ -133,7 +135,7 @@ void markPages();
 void writeGraphics(char* fileName, double* variableArray, char* operation);
 void printNumberOfOperations();
 Element* createElement(long key, size_t sizeOfElement, void* value);
-long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags);
+static inline uint64_t rdtsc(void);
 /*
 *	This are the function of the
 *	librarry BOPL this are the ones
@@ -146,16 +148,16 @@ long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int g
 	* program starts properlly
 	*/
 
-int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int probInsert, int probInplaceInsert, int probLookup, int probUpdate, int probRemove)
+int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int probInsert, int probInplaceInsert, int probLookup, int probUpdate, int probRemove, int execution)
 {
 	setSignalHandler();
 	int functionId = initBufferMapping(numberOfPages);
 
 	csv_iteration_time = (double*) malloc(sizeof(double) * NUMBER_OF_OPERATIONS);
-	csv_critical_path_flushs = (int*) malloc(sizeof(int) * NUMBER_OF_OPERATIONS);
+	csv_critical_path_flushs = (double*) malloc(sizeof(double) * NUMBER_OF_OPERATIONS);
 
-	sprintf(nameTimeCSV, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, TIME_GRAPH);
-	sprintf(nameFlushCSV, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, FLUSH_GRAPH);
+	sprintf(nameTimeCSV, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, TIME_GRAPH);
+	sprintf(nameFlushCSV, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, FLUSH_GRAPH);
 
 
 	switch(mode)
@@ -176,7 +178,6 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 			exit(-1);
 			break;
 	}
-		clock_gettime(CLOCK_MONOTONIC, &tstart);
 	return functionId;
 }
 
@@ -186,8 +187,9 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 	*/
 void bopl_insert(long key, size_t sizeOfValue, void* value)
 {
+	double elapseTime = 0;
+	clock_gettime(CLOCK_MONOTONIC, &tstart);
 	Element* newElement = createElement(key, sizeOfValue, value);
-
 	switch (listMode) {
 		case HASH_MAP_MODE:
 				// DO NOTHING
@@ -197,23 +199,26 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 				break;
 		case FLUSH_ONLY_MODE:
 				forceFlush(newElement);
-        LATENCIE(WRITE_DELAY);
+        latency(WRITE_DELAY);
 				FLUSH(workingPointerOffset);
+				numberFlushsPerOperation ++;
 				newElement = addElementInList(&tailPointer, newElement);
 				if(newElement->next != NULL)
         {
-          LATENCIE(WRITE_DELAY);
+          latency(WRITE_DELAY);
           FLUSH(newElement->next);
+					numberFlushsPerOperation ++;
         }
-        LATENCIE(READ_DELAY);
+        latency(READ_DELAY);
         *tailPointerOffset = SUBTRACT_POINTERS(tailPointer, buffer);
-        LATENCIE(WRITE_DELAY);
+        latency(WRITE_DELAY);
         FLUSH(tailPointerOffset);
-        LATENCIE(READ_DELAY);
+				numberFlushsPerOperation ++;
+        latency(READ_DELAY);
 				*saveFunctionID = functionID;
-        LATENCIE(WRITE_DELAY);
+        latency(WRITE_DELAY);
 				FLUSH(saveFunctionID);
-
+				numberFlushsPerOperation ++;
 				break;
 		default:
 				perror(BAD_INIT_ERROR);
@@ -221,9 +226,12 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 	}
 
 	clock_gettime(CLOCK_MONOTONIC, &tend);
-	csv_iteration_time[INSERT_INDEX] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	elapseTime = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	csv_iteration_time[INSERT_INDEX] += elapseTime;
 	numberOfInserts ++;
 
+	csv_critical_path_flushs[INSERT_INDEX] += numberFlushsPerOperation;
+	numberFlushsPerOperation = 0;
 	functionID ++;
 }
 
@@ -234,34 +242,41 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 	*/
 void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new_value)
 {
-		Element* newElement = createElement(key, sizeOfValue, new_value);
+	double elapseTime = 0;
+	clock_gettime(CLOCK_MONOTONIC, &tstart);
+	Element* newElement = createElement(key, sizeOfValue, new_value);
 
-		switch(listMode)
-		{
-			case UNDO_LOG_MODE:
-			    inplaceInsertUndoLog(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
+	switch(listMode)
+	{
+		case UNDO_LOG_MODE:
+		    inplaceInsertUndoLog(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
+			break;
+		case HASH_MAP_MODE:
+		    inplaceInsertHashMap(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
+			break;
+		case FLUSH_ONLY_MODE:
+	      latency(WRITE_DELAY);
+	  		FLUSH(workingPointerOffset);
+				numberFlushsPerOperation ++;
+				inplaceInsertFlush(fatherKey, newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
+				*saveFunctionID = functionID;
+	      latency(WRITE_DELAY);
+	      FLUSH(saveFunctionID);
+				numberFlushsPerOperation ++;
 				break;
-			case HASH_MAP_MODE:
-			    inplaceInsertHashMap(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
-				break;
-			case FLUSH_ONLY_MODE:
-          LATENCIE(WRITE_DELAY);
-	    		FLUSH(workingPointerOffset);
-					inplaceInsertFlush(fatherKey, newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
-					*saveFunctionID = functionID;
-          LATENCIE(WRITE_DELAY);
-          FLUSH(saveFunctionID);
-					break;
-			default:
-					perror(BAD_INIT_ERROR);
-					exit(ERROR);
-		}
+		default:
+				perror(BAD_INIT_ERROR);
+				exit(ERROR);
+	}
 
-		clock_gettime(CLOCK_MONOTONIC, &tend);
-		csv_iteration_time[INPLACE_INSERT_INDEX] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
-		numberOfInplaceInserts++;
+	clock_gettime(CLOCK_MONOTONIC, &tend);
+	elapseTime = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	csv_iteration_time[INPLACE_INSERT_INDEX] += elapseTime;
 
-		functionID ++;
+	csv_critical_path_flushs[INPLACE_INSERT_INDEX] += numberFlushsPerOperation;
+	numberFlushsPerOperation = 0;
+	numberOfInplaceInserts++;
+	functionID ++;
 }
 
     /*
@@ -271,6 +286,9 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
     */
 void bopl_remove(long keyToRemove)
 {
+	double elapseTime = 0;
+	clock_gettime(CLOCK_MONOTONIC, &tstart);
+
 	int result;
 	switch (listMode) {
 		case HASH_MAP_MODE:
@@ -282,17 +300,21 @@ void bopl_remove(long keyToRemove)
 		case FLUSH_ONLY_MODE:
 				 result = removeElementFlush(keyToRemove, &headerPointer, headerPointerOffset, buffer, workingPointer, &tailPointer, tailPointerOffset);
 				 *saveFunctionID = functionID;
-         LATENCIE(WRITE_DELAY);
+         latency(WRITE_DELAY);
 				 FLUSH(saveFunctionID);
+				 numberFlushsPerOperation ++;
 				break;
 		default:
 			perror(BAD_INIT_ERROR);
 			exit(ERROR);
 	}
 	clock_gettime(CLOCK_MONOTONIC, &tend);
-	csv_iteration_time[REMOVE_INDEX] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	elapseTime = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	csv_iteration_time[REMOVE_INDEX] += elapseTime;
 	numberOfRemoves ++;
 
+	csv_critical_path_flushs[REMOVE_INDEX] += numberFlushsPerOperation;
+	numberFlushsPerOperation = 0;
 	functionID ++;
 
 	if(result == ERROR)
@@ -327,7 +349,7 @@ void bopl_close()
 	}
 
 	*saveFunctionID = 0;
-  LATENCIE(WRITE_DELAY);
+  latency(WRITE_DELAY);
 	FLUSH(saveFunctionID);
 
 	munmap(saveFunctionID, sizeof(int));
@@ -343,6 +365,7 @@ void bopl_close()
 	close(tailPointerOffsetDescriptor);
 
 	writeGraphics(nameTimeCSV, csv_iteration_time, "TIME");
+	writeGraphics(nameFlushCSV, csv_critical_path_flushs, "FLUSH");
 
 	printNumberOfOperations();
 }
@@ -373,6 +396,9 @@ void bopl_crash()
 
 void* bopl_lookup(long key)
 {
+	double elapseTime = 0;
+	clock_gettime(CLOCK_MONOTONIC, &tstart);
+
 	void* value;
 	Element* result;
 	switch (listMode) {
@@ -382,8 +408,9 @@ void* bopl_lookup(long key)
 				break;
 		case FLUSH_ONLY_MODE:
 				*saveFunctionID = functionID;
-        LATENCIE(WRITE_DELAY);
+        latency(WRITE_DELAY);
 				FLUSH(saveFunctionID);
+				numberFlushsPerOperation ++;
 		case UNDO_LOG_MODE:
 				result = findElement(headerPointer, key);
 				value = result->value;
@@ -400,9 +427,13 @@ void* bopl_lookup(long key)
 	}
 
 	clock_gettime(CLOCK_MONOTONIC, &tend);
-	csv_iteration_time[LOOKUP_INDEX] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
-	numberOfLookups ++;
+	elapseTime =  ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	csv_iteration_time[LOOKUP_INDEX] += elapseTime;
 
+	csv_critical_path_flushs[LOOKUP_INDEX] += numberFlushsPerOperation;
+	numberFlushsPerOperation = 0;
+
+	numberOfLookups ++;
 	functionID ++;
 
 	return value;
@@ -411,16 +442,22 @@ void* bopl_lookup(long key)
 int bopl_update(long key, size_t sizeOfValue, void* new_value)
 {
 	int result;
+	double elapseTime = 0;
+	clock_gettime(CLOCK_MONOTONIC, &tstart);
+
 	Element* newElement = createElement(key, sizeOfValue, new_value);
 
 	switch(listMode)
 	{
 	    case FLUSH_ONLY_MODE:
-            LATENCIE(WRITE_DELAY);
+            latency(WRITE_DELAY);
 						FLUSH(workingPointerOffset);
+						numberFlushsPerOperation ++;
 	        	result = updateElementFlush(newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
 						*saveFunctionID = functionID;
+						latency(WRITE_DELAY);
 						FLUSH(saveFunctionID);
+						numberFlushsPerOperation ++;
 						break;
       case UNDO_LOG_MODE:
             result = updateElementUndoLog(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
@@ -437,9 +474,13 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 		perror(BOPL_UPDATE_ERROR);
 
 	clock_gettime(CLOCK_MONOTONIC, &tend);
-	csv_iteration_time[UPDATE_INDEX] = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
-	numberOfUpdates ++;
+	elapseTime = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+	csv_iteration_time[UPDATE_INDEX] += elapseTime;
 
+	csv_critical_path_flushs[UPDATE_INDEX] += numberFlushsPerOperation;
+	numberFlushsPerOperation = 0;
+
+	numberOfUpdates ++;
 	functionID ++;
 
 	return result;
@@ -563,9 +604,9 @@ void batchingTheFlushs(Element* nextPointer)
     	FLUSH(toFlush);
       //pmem_flush(flushPointer, cacheLineSize);
       toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
-      LATENCIE(WRITE_DELAY);
+      latency(WRITE_DELAY);
     }
-    LATENCIE(WRITE_DELAY);
+    latency(WRITE_DELAY);
     FLUSH(workingPointerOffset);
     savePointer = toFlush;
 
@@ -584,7 +625,7 @@ void batchingTheFlushs(Element* nextPointer)
 									father->next = epochModification->modification->newNext;
 									if(father->next != NULL)
                   {
-                    LATENCIE(WRITE_DELAY);
+                    latency(WRITE_DELAY);
 										FLUSH(father->next);
                   }
 								}
@@ -593,7 +634,7 @@ void batchingTheFlushs(Element* nextPointer)
 									addLogEntry(NULL, headerPointer, safedPage);
 									headerPointer = epochModification->modification->newNext;
 									*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
-                  LATENCIE(WRITE_DELAY);
+                  latency(WRITE_DELAY);
 									FLUSH(headerPointerOffset);
 								}
 
@@ -615,14 +656,14 @@ void batchingTheFlushs(Element* nextPointer)
 					if(father == NULL)
 					{
 						*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
-            LATENCIE(WRITE_DELAY);
+            latency(WRITE_DELAY);
 	          FLUSH(headerPointerOffset);
 					}
 					else
 					{
 						if(father->next != NULL)
             {
-              LATENCIE(WRITE_DELAY);
+              latency(WRITE_DELAY);
 							FLUSH(father->next);
             }
 					}
@@ -633,15 +674,15 @@ void batchingTheFlushs(Element* nextPointer)
 			}
 			flushFirstEntryOffset();
 		}
-    LATENCIE(WRITE_DELAY);
+    latency(WRITE_DELAY);
 		FLUSH(tailPointerOffset);
 
 		*saveFunctionID  = temporaryFunctionID;
-    LATENCIE(WRITE_DELAY);
+    latency(WRITE_DELAY);
 		FLUSH(saveFunctionID);
 
     *savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
-    LATENCIE(WRITE_DELAY);
+    latency(WRITE_DELAY);
     FLUSH(savePointerOffset);
 }
 
@@ -694,7 +735,7 @@ void markPages()
 	while(currentPage <= workingPage)
 	{
 		dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
-    LATENCIE(WRITE_DELAY);
+    latency(WRITE_DELAY);
 		FLUSH(dirtyPages + WORD_OFFSET(currentPage));
 		savePointer += pageSize;
 		currentPage ++;
@@ -857,7 +898,8 @@ int forceFlush(Element* toFlush)
 	{
 		FLUSH(toFlush);
 	 	toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
-    LATENCIE(WRITE_DELAY);
+		numberFlushsPerOperation ++;
+    latency(WRITE_DELAY);
 	}
 
 	return 1;
@@ -912,8 +954,9 @@ void checkThreshold(size_t sizeOfValue)
 	else
 	{
 		*saveFunctionID = functionID;
-    LATENCIE(WRITE_DELAY);
+    latency(WRITE_DELAY);
 		FLUSH(saveFunctionID);
+		numberFlushsPerOperation ++;
 	}
 }
 
@@ -951,11 +994,15 @@ void printNumberOfOperations()
 }
 
 
-long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
+void latency(int delay)
 {
-    int ret;
+  int64_t time = rdtsc();
+  while(rdtsc() - time < delay);
+}
 
-   ret = syscall(__NR_perf_event_open, hw_event, pid, cpu,
-                   group_fd, flags);
-    return ret;
+static inline uint64_t rdtsc(void)
+{
+    uint32_t eax, edx;
+    asm volatile("rdtsc\n\t": "=a" (eax), "=d" (edx));
+    return (uint64_t)eax | (uint64_t)edx << 32;
 }

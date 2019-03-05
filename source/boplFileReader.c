@@ -109,8 +109,9 @@ void parseFile(char* file_location)
                 int probLookup = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
                 int probUpdate = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
                 int probRemove = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
+                int execution = atoi(strtok_r(NULL, FILE_DELIMITER, &saveptr));
 
-                int functionID = bopl_init(numberOfPages, &grain, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove);
+                int functionID = bopl_init(numberOfPages, &grain, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution);
                 while (numberOfLine <= functionID)
                 {
                   fgets(line, MAX_SIZE_OF_INSTRUCTIONS, fp);

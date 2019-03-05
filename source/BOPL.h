@@ -13,9 +13,10 @@
 #include <semaphore.h>
 #include <time.h>
 #include <sys/ioctl.h>
-#include <linux/perf_event.h>
 #include <linux/hw_breakpoint.h>
 #include <asm/unistd.h>
+#include <immintrin.h>
+#include <inttypes.h>
 //#include <libpmem.h>
 #include "list.h"
 #include "hashmap.h"
@@ -23,6 +24,7 @@
 #include "fileMacros.h"
 #include "errorMacroLib.h"
 #include "log.h"
+#include "fileMacros.h"
 
 
 /*
@@ -30,7 +32,7 @@
 *	librarry BOPL this are the ones
 *	to use in the main function
 */
-int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int probInsert, int probInplaceInsert, int probLookup, int probUpdate, int probRemove);
+int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int probInsert, int probInplaceInsert, int probLookup, int probUpdate, int probRemove, int execution);
 void bopl_insert(long key, size_t sizeOfValue, void* new_value);
 void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new_value);
 void* bopl_lookup(long key);
@@ -81,5 +83,6 @@ int openFile(int* created, char* fileName, unsigned long* size);
 */
 int forceFlush(Element* toFlush);
 
+void latency(int delay);
 /**************************************************/
 #endif

@@ -10,6 +10,8 @@
 
 #define NUMBER_OF_PAGES 1000
 #define NUMBER_OF_ITERATIONS 50
+#define NUMBER_OF_EXECUTIONS 5
+
 #define GRAIN 1
 
 #define RANDOM_SEED 0
@@ -32,7 +34,7 @@
 int prob_of_operation[NUMBER_OF_OPERATIONS];
 
 void help();
-void creatAndFillTestFile(int numberPages, int grain, int numberOfIterations, int crashLine, int mode);
+void creatAndFillTestFile(int numberPages, int grain, int numberOfIterations, int crashLine, int mode, int execution);
 
 int main(int argc, char* argv[])
 {
@@ -43,13 +45,14 @@ int main(int argc, char* argv[])
   int grain = GRAIN;
   int mode = FLUSH_ONLY_MODE;
   int crashLine = -1;
+  int executions = NUMBER_OF_EXECUTIONS;
 
   for(i = 0; i < NUMBER_OF_OPERATIONS; i++)
   {
     prob_of_operation[i] = 0;
   }
 
-  while((opt = getopt(argc, argv, "hi:p:u:r:l:c:o:g:s:m:")) != -1)
+  while((opt = getopt(argc, argv, "hi:p:u:r:l:c:o:g:s:m:e:")) != -1)
   {
     switch(opt)
     {
@@ -88,6 +91,9 @@ int main(int argc, char* argv[])
         case 'm':
           mode = atoi(optarg);
           break;
+        case 'e':
+          executions = atoi(optarg);
+          break;
         case 'h':
         default:
           help();
@@ -110,12 +116,14 @@ int main(int argc, char* argv[])
     }
   }
 
-  creatAndFillTestFile(numberOfPages, grain, numberOfIterations, crashLine, mode);
-
+  for(i = 1; i <= executions; i++ )
+  {
+    creatAndFillTestFile(numberOfPages, grain, numberOfIterations, crashLine, mode, i);
+  }
   return 0;
 }
 
-void creatAndFillTestFile(int numberOfPages, int grain, int numberOfIterations, int crashLine, int mode)
+void creatAndFillTestFile(int numberOfPages, int grain, int numberOfIterations, int crashLine, int mode, int execution)
 {
   long key;
   int i, prob;
@@ -130,6 +138,8 @@ void creatAndFillTestFile(int numberOfPages, int grain, int numberOfIterations, 
 
   Stack* savedKeys;
 
+  printf("\t --- EXECUTION %d ---\n\n", execution );
+
   printf("probability of Insert: %d\n", prob_of_operation[INSERT_INDEX]);
   printf("probability of Inplace Insert: %d\n", prob_of_operation[INPLACE_INSERT_INDEX]);
   printf("probability of Lookup: %d\n", prob_of_operation[LOOKUP_INDEX]);
@@ -141,12 +151,18 @@ void creatAndFillTestFile(int numberOfPages, int grain, int numberOfIterations, 
   savedKeys = createStack(MAX_OF_SAVED_KEYS);
 
 
-  snprintf(newFileName, MAX_FILE_NAME, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_s:%d%s", FILE_DIR, mode, numberOfIterations, prob_of_operation[INSERT_INDEX], prob_of_operation[INPLACE_INSERT_INDEX], prob_of_operation[LOOKUP_INDEX], prob_of_operation[UPDATE_INDEX], prob_of_operation[REMOVE_INDEX], numberOfPages, FILE_EXTENSION);
+  snprintf(newFileName, MAX_FILE_NAME, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_s:%d_e:%d%s", FILE_DIR, mode, numberOfIterations, prob_of_operation[INSERT_INDEX], prob_of_operation[INPLACE_INSERT_INDEX], prob_of_operation[LOOKUP_INDEX], prob_of_operation[UPDATE_INDEX], prob_of_operation[REMOVE_INDEX], numberOfPages, execution, FILE_EXTENSION);
 
   //char* filePath = strcat(fileName);
   FILE* file = fopen(newFileName, "w+");
 
-  fprintf(file, "%s%s%d%s%d%s%d%s%d%s%d%s%d%s%d%s%d%s%d%s\n", INIT_OPERATION, FILE_DELIMITER, numberOfPages, FILE_DELIMITER, grain, FILE_DELIMITER, mode, FILE_DELIMITER, numberOfIterations, FILE_DELIMITER, prob_of_operation[INSERT_INDEX], FILE_DELIMITER, prob_of_operation[INPLACE_INSERT_INDEX], FILE_DELIMITER, prob_of_operation[LOOKUP_INDEX], FILE_DELIMITER, prob_of_operation[UPDATE_INDEX], FILE_DELIMITER, prob_of_operation[REMOVE_INDEX], FILE_DELIMITER);
+  if(file == NULL)
+  {
+    puts("File not created!");
+    exit(ERROR);
+  }
+
+  fprintf(file, "%s%s%d%s%d%s%d%s%d%s%d%s%d%s%d%s%d%s%d%s%d%s\n", INIT_OPERATION, FILE_DELIMITER, numberOfPages, FILE_DELIMITER, grain, FILE_DELIMITER, mode, FILE_DELIMITER, numberOfIterations, FILE_DELIMITER, prob_of_operation[INSERT_INDEX], FILE_DELIMITER, prob_of_operation[INPLACE_INSERT_INDEX], FILE_DELIMITER, prob_of_operation[LOOKUP_INDEX], FILE_DELIMITER, prob_of_operation[UPDATE_INDEX], FILE_DELIMITER, prob_of_operation[REMOVE_INDEX], FILE_DELIMITER, execution, FILE_DELIMITER);
 
   srand(RANDOM_SEED);
 
@@ -218,6 +234,7 @@ void creatAndFillTestFile(int numberOfPages, int grain, int numberOfIterations, 
   printf("Number of Lookup: %d\n", lookup);
   printf("Number of Update: %d\n", update);
   printf("Number of Remove: %d\n", remove);
+  printf("\n \n");
 
   free(newFileName);
 }
@@ -234,6 +251,7 @@ void help()
   printf("\t GRAIN_SIZE: %d\n", GRAIN);
   printf("\t SIZE: %d\n", NUMBER_OF_PAGES);
   printf("\t NUMBER_OF_ITERATIONS: %d\n", NUMBER_OF_ITERATIONS);
+  printf("\t NUMBER_OF_EXECUTIONS: %d\n", NUMBER_OF_EXECUTIONS);
   puts("");
   puts("Options:");
   puts("\t -i PERCENTAGE_OF_INSERT : Percentage of inserts.");
@@ -246,6 +264,7 @@ void help()
   puts("\t -g GRAIN_SIZE: Size of the granularity of the algorithm.");
   puts("\t -s SIZE: Number of pages that are allocated.");
   puts("\t -m MODE: Mode to BOPL operate see macroLib.h for more info.");
+  puts("\t -e NUMBER_OF_EXECUTIONS: Number of times the benchmark it's created.");
   puts("\t -h : To see help.");
   puts("");
 }
