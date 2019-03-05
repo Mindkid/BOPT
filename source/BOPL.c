@@ -156,9 +156,13 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 	csv_iteration_time = (double*) malloc(sizeof(double) * NUMBER_OF_OPERATIONS);
 	csv_critical_path_flushs = (double*) malloc(sizeof(double) * NUMBER_OF_OPERATIONS);
 
-	sprintf(nameTimeCSV, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, TIME_GRAPH);
-	sprintf(nameFlushCSV, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, FLUSH_GRAPH);
-
+	#ifdef __STT_RAM__
+		sprintf(nameTimeCSV, "%sSTT-RAM_m:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, TIME_GRAPH);
+		sprintf(nameFlushCSV, "%sSTT-RAM_m:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, FLUSH_GRAPH);
+	#else
+		sprintf(nameTimeCSV, "%sPCM_m:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, TIME_GRAPH);
+		sprintf(nameFlushCSV, "%sPCM_m:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, FLUSH_GRAPH);
+	#endif
 
 	switch(mode)
 	{
