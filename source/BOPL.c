@@ -321,8 +321,8 @@ void bopl_remove(long keyToRemove)
 	numberFlushsPerOperation = 0;
 	functionID ++;
 
-	if(result == ERROR)
-		perror(BOPL_REMOVE_ERROR);
+	//if(result == ERROR)
+		//perror(BOPL_REMOVE_ERROR);
 }
 
 
@@ -426,7 +426,7 @@ void* bopl_lookup(long key)
 
 	if(result->key != key)
 	{
-			perror(BOPL_SEARCH_ERROR);
+		//	perror(BOPL_SEARCH_ERROR);
 			value = NULL;
 	}
 
@@ -474,8 +474,8 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 						exit(ERROR);
 	}
 
-	if(result == ERROR)
-		perror(BOPL_UPDATE_ERROR);
+//	if(result == ERROR)
+	//	perror(BOPL_UPDATE_ERROR);
 
 	clock_gettime(CLOCK_MONOTONIC, &tend);
 	elapseTime = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);

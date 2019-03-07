@@ -148,7 +148,7 @@ void creatAndFillTestFile(int numberOfPages, int grain, int numberOfIterations, 
 
   size = sizeof(int);
 
-  savedKeys = createStack(MAX_OF_SAVED_KEYS);
+  savedKeys = createStack(numberOfIterations);
 
 
   snprintf(newFileName, MAX_FILE_NAME, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_s:%d_e:%d%s", FILE_DIR, mode, numberOfIterations, prob_of_operation[INSERT_INDEX], prob_of_operation[INPLACE_INSERT_INDEX], prob_of_operation[LOOKUP_INDEX], prob_of_operation[UPDATE_INDEX], prob_of_operation[REMOVE_INDEX], numberOfPages, execution, FILE_EXTENSION);
