@@ -190,8 +190,7 @@ void creatAndFillTestFile(int numberOfPages, int grain, int numberOfIterations, 
         {
           key = rand();
           value = rand();
-          fatherKey = pop(savedKeys);
-          push(savedKeys, fatherKey);
+          fatherKey = pop(savedKeys, NO_MODIFY);
           push(savedKeys, key);
           fprintf(file, "%s%s%ld%s%ld%s%d%s%d%s\n", INPLACE_INSERT_OPERATION, FILE_DELIMITER, key, FILE_DELIMITER, fatherKey, FILE_DELIMITER, size, FILE_DELIMITER, value, FILE_DELIMITER);
           inplaceInsert ++;
@@ -200,8 +199,7 @@ void creatAndFillTestFile(int numberOfPages, int grain, int numberOfIterations, 
         {
           if(prob_of_operation[LOOKUP_INDEX] > prob)
           {
-            key = pop(savedKeys);
-            push(savedKeys, key);
+            key = pop(savedKeys, NO_MODIFY);
             fprintf(file, "%s%s%ld%s\n", LOOKUP_OPERATION, FILE_DELIMITER, key, FILE_DELIMITER);
             lookup ++;
           }
@@ -209,15 +207,14 @@ void creatAndFillTestFile(int numberOfPages, int grain, int numberOfIterations, 
           {
             if(prob_of_operation[UPDATE_INDEX] > prob)
             {
-              key = pop(savedKeys);
-              push(savedKeys, key);
+              key = pop(savedKeys, NO_MODIFY);
               value = rand();
               fprintf(file, "%s%s%ld%s%d%s%d%s\n", UPDATE_OPERATION, FILE_DELIMITER, key, FILE_DELIMITER, size, FILE_DELIMITER, value, FILE_DELIMITER);
               update ++;
             }
             else
             {
-              key = pop(savedKeys);
+              key = pop(savedKeys, MODIFY);
               fprintf(file, "%s%s%ld%s\n", REMOVE_OPERATION, FILE_DELIMITER, key, FILE_DELIMITER);
               remove ++;
             }
