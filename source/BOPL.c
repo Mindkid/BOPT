@@ -293,16 +293,15 @@ void bopl_remove(long keyToRemove)
 	double elapseTime = 0;
 	clock_gettime(CLOCK_MONOTONIC, &tstart);
 
-	int result;
 	switch (listMode) {
 		case HASH_MAP_MODE:
-			  result = removeElementHashMap(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
+			  removeElementHashMap(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 				break;
 		case UNDO_LOG_MODE:
-				result = removeElementUndoLog(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
+				removeElementUndoLog(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 				break;
 		case FLUSH_ONLY_MODE:
-				 result = removeElementFlush(keyToRemove, &headerPointer, headerPointerOffset, buffer, workingPointer, &tailPointer, tailPointerOffset);
+				 removeElementFlush(keyToRemove, &headerPointer, headerPointerOffset, buffer, workingPointer, &tailPointer, tailPointerOffset);
 				 *saveFunctionID = functionID;
          latency(WRITE_DELAY);
 				 FLUSH(saveFunctionID);
@@ -321,8 +320,6 @@ void bopl_remove(long keyToRemove)
 	numberFlushsPerOperation = 0;
 	functionID ++;
 
-	//if(result == ERROR)
-		//perror(BOPL_REMOVE_ERROR);
 }
 
 
@@ -368,7 +365,7 @@ void bopl_close()
  	close(headerPointerOffsetDescriptor);
 	close(tailPointerOffsetDescriptor);
 
-	writeGraphics(nameTimeCSV, csv_iteration_time, "TIME");
+	writeGraphics(nameTimeCSV, csv_iteration_time, "TIME (s)");
 	writeGraphics(nameFlushCSV, csv_critical_path_flushs, "FLUSH");
 
 	printNumberOfOperations();
@@ -426,7 +423,6 @@ void* bopl_lookup(long key)
 
 	if(result->key != key)
 	{
-		//	perror(BOPL_SEARCH_ERROR);
 			value = NULL;
 	}
 
