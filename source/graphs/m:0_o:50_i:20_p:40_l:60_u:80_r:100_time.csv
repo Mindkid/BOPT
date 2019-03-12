@@ -1,6 +1,0 @@
-OPERATION,TIME,OCCURENCES
-insert,0.000129,9
-inplace_insert,0.000126,10
-remove,0.000124,12
-update,0.000128,10
-lookup,0.000119,9
