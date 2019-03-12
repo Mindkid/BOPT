@@ -44,7 +44,7 @@ void insertModification(long epoch, long fatherKey, Modification* newModif)
 
     Epoch_Modification* newEpochModif = (Epoch_Modification*) malloc(sizeof(Epoch_Modification));
 
-    newEpochModif->modification = hashHead;
+    newEpochModif->modification = newModif;
     newEpochModif->next = NULL;
 
     Epoch_Modification* epochModif = listOfModificationsInEpoch + epoch_position;
@@ -96,7 +96,7 @@ void* removeEpochModifications(long epoch)
 
     Epoch_Modification* removeModifications = epochRemove;
     Epoch_Modification* freeModification;
-    while(removeModifications->modification != NULL)
+    while(removeModifications != NULL)
     {
         Modification* newModif = removeModifications->modification;
         if(newModif->previous != NULL)

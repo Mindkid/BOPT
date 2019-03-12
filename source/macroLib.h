@@ -14,7 +14,6 @@
 
 #ifdef __CLWB__
   #define FLUSH(POINTER)  asm("clwb (%0)" :: "r"(POINTER));
-
 #else
   #ifdef __CLFLUSHOPT__
     #define FLUSH(POINTER) asm("clflushopt (%0)" :: "r"(POINTER));
@@ -22,6 +21,7 @@
     #define FLUSH(POINTER) asm("clflush (%0)" :: "r"(POINTER));
   #endif /* __CLFLUSHOPT__  */
 #endif /*  __CLWB__  */
+#define FENCE() asm("sfence");
 
 #define MAP_FILE_NAME "../ramdisk/mapFile.dat"
 #define MAP_ADDR 0x7f49dcfc0000

@@ -203,25 +203,29 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 				break;
 		case FLUSH_ONLY_MODE:
 				forceFlush(newElement);
-        latency(WRITE_DELAY);
 				FLUSH(workingPointerOffset);
+				FENCE();
+				latency(WRITE_DELAY);
 				numberFlushsPerOperation ++;
 				newElement = addElementInList(&tailPointer, newElement);
 				if(newElement->next != NULL)
         {
-          latency(WRITE_DELAY);
           FLUSH(newElement->next);
+					FENCE();
+					latency(WRITE_DELAY);
 					numberFlushsPerOperation ++;
         }
         latency(READ_DELAY);
         *tailPointerOffset = SUBTRACT_POINTERS(tailPointer, buffer);
-        latency(WRITE_DELAY);
         FLUSH(tailPointerOffset);
+				FENCE();
+				latency(WRITE_DELAY);
 				numberFlushsPerOperation ++;
         latency(READ_DELAY);
 				*saveFunctionID = functionID;
-        latency(WRITE_DELAY);
 				FLUSH(saveFunctionID);
+				FENCE();
+				latency(WRITE_DELAY);
 				numberFlushsPerOperation ++;
 				break;
 		default:
@@ -259,13 +263,15 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 		    inplaceInsertHashMap(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 			break;
 		case FLUSH_ONLY_MODE:
-	      latency(WRITE_DELAY);
 	  		FLUSH(workingPointerOffset);
+				FENCE();
+				latency(WRITE_DELAY);
 				numberFlushsPerOperation ++;
 				inplaceInsertFlush(fatherKey, newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
 				*saveFunctionID = functionID;
-	      latency(WRITE_DELAY);
 	      FLUSH(saveFunctionID);
+				FENCE();
+				latency(WRITE_DELAY);
 				numberFlushsPerOperation ++;
 				break;
 		default:
@@ -303,8 +309,9 @@ void bopl_remove(long keyToRemove)
 		case FLUSH_ONLY_MODE:
 				 removeElementFlush(keyToRemove, &headerPointer, headerPointerOffset, buffer, workingPointer, &tailPointer, tailPointerOffset);
 				 *saveFunctionID = functionID;
-         latency(WRITE_DELAY);
 				 FLUSH(saveFunctionID);
+				 FENCE();
+				 latency(WRITE_DELAY);
 				 numberFlushsPerOperation ++;
 				break;
 		default:
@@ -409,8 +416,10 @@ void* bopl_lookup(long key)
 				break;
 		case FLUSH_ONLY_MODE:
 				*saveFunctionID = functionID;
-        latency(WRITE_DELAY);
 				FLUSH(saveFunctionID);
+				FENCE();
+				latency(WRITE_DELAY);
+
 				numberFlushsPerOperation ++;
 		case UNDO_LOG_MODE:
 				result = findElement(headerPointer, key);
@@ -450,13 +459,15 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 	switch(listMode)
 	{
 	    case FLUSH_ONLY_MODE:
-            latency(WRITE_DELAY);
 						FLUSH(workingPointerOffset);
+						FENCE();
+						latency(WRITE_DELAY);
 						numberFlushsPerOperation ++;
 	        	result = updateElementFlush(newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
 						*saveFunctionID = functionID;
-						latency(WRITE_DELAY);
 						FLUSH(saveFunctionID);
+						FENCE();
+						latency(WRITE_DELAY);
 						numberFlushsPerOperation ++;
 						break;
       case UNDO_LOG_MODE:
@@ -608,6 +619,7 @@ void batchingTheFlushs(Element* nextPointer)
     }
     latency(WRITE_DELAY);
     FLUSH(workingPointerOffset);
+		FENCE();
     savePointer = toFlush;
 
     if(listMode == HASH_MAP_MODE)
@@ -616,7 +628,7 @@ void batchingTheFlushs(Element* nextPointer)
         while(safedPage <= nextPage)
         {
             Epoch_Modification* epochModification = getEpochModifications(safedPage);
-            while(epochModification->modification != NULL)
+            while(epochModification != NULL)
             {
 								Element* father = epochModification->modification->father;
 								if(father != NULL)
@@ -676,14 +688,17 @@ void batchingTheFlushs(Element* nextPointer)
 		}
     latency(WRITE_DELAY);
 		FLUSH(tailPointerOffset);
+		FENCE();
 
 		*saveFunctionID  = temporaryFunctionID;
     latency(WRITE_DELAY);
 		FLUSH(saveFunctionID);
+		FENCE();
 
     *savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
     latency(WRITE_DELAY);
     FLUSH(savePointerOffset);
+		FENCE();
 }
 
 void* workingBatchThread(void* grain)
@@ -900,6 +915,7 @@ int forceFlush(Element* toFlush)
 	 	toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
 		numberFlushsPerOperation ++;
     latency(WRITE_DELAY);
+		FENCE();
 	}
 
 	return 1;

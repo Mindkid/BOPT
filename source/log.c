@@ -74,15 +74,15 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
           if(lastEntry->oldNext == NULL)
           {
             *headerPointerOffset =  SUBTRACT_POINTERS(workingPointer, buffer);
-            latency(WRITE_DELAY);
             FLUSH(headerPointerOffset);
+            latency(WRITE_DELAY);
             *headerPointer = workingPointer;
           }
           else
           {
             *headerPointerOffset = SUBTRACT_POINTERS(lastEntry->oldNext, buffer);
-            latency(WRITE_DELAY);
             FLUSH(headerPointerOffset);
+            latency(WRITE_DELAY);
             *headerPointer = lastEntry->oldNext;
           }
         }
@@ -93,11 +93,11 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
 
         lastEntryOffset = (lastEntryOffset - 1) % numberOfEntries;
         lastEntry = logEntries + lastEntryOffset;
-
-        *lastEntryOffsetPointer = lastEntryOffset;
-        latency(WRITE_DELAY);
-        FLUSH(lastEntryOffsetPointer);
     }
+    *lastEntryOffsetPointer = lastEntryOffset;
+    FLUSH(lastEntryOffsetPointer);
+    FENCE();
+    latency(WRITE_DELAY);
 }
 
 void recoverStructure(Element* father, Element* oldNext)
@@ -123,15 +123,18 @@ void addLogEntry(Element* father, Element* oldNext, long page)
 
   while(entry < lastEntry)
   {
-      latency(WRITE_DELAY);
       FLUSH(entry);
+      FENCE();
+      latency(WRITE_DELAY);
       entry = (LogEntry*) ADD_OFFSET_TO_POINTER(entry, &cacheLineSize);
       numberFlushsPerOperation ++;
   }
 
   *lastEntryOffsetPointer = lastEntryOffset;
-  latency(WRITE_DELAY);
+
   FLUSH(lastEntryOffsetPointer);
+  FENCE();
+  latency(WRITE_DELAY);
   numberFlushsPerOperation ++;
 }
 
