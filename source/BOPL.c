@@ -960,12 +960,15 @@ void checkThreshold(size_t sizeOfValue)
 	int lastPage =  getPointerPage(workingPointer);
 	int nextPage = getPointerPage(nextPointer);
 
-	if(listMode != FLUSH_ONLY_MODE && lastPage < nextPage)
+	if(listMode != FLUSH_ONLY_MODE )
 	{
-		fillPage = getLeftToFillPage(workingPointer);
-		workingPointer = ADD_OFFSET_TO_POINTER(workingPointer, &fillPage);
-		sem_post(&workingSemaphore);
-		workPage ++;
+		if(lastPage < nextPage)
+		{
+			fillPage = getLeftToFillPage(workingPointer);
+			workingPointer = ADD_OFFSET_TO_POINTER(workingPointer, &fillPage);
+			sem_post(&workingSemaphore);
+			workPage ++;
+		}
 	}
 	else
 	{
