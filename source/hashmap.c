@@ -1,20 +1,23 @@
 #include "hashmap.h"
 
+
 Element* getNewNextElement(long fatherKey);
 Element* getNewNextOfHead();
 
-Modification* hashOfModifications;
+ModificationBucket* hashOfModifications;
 Epoch_Modification* listOfModificationsInEpoch;
 
 /*
 *   This function inits the
 *   hash and epoch buffer
 */
-void initHashMode()
+void initHashMode(long numberOfPages)
 {
-    hashOfModifications = (Modification*) malloc(sizeof(Modification) * NUMBER_OF_BUCKETS);
-    listOfModificationsInEpoch = (Epoch_Modification*) malloc(sizeof(Epoch_Modification) * MAX_EPOCHS);
+    hashOfModifications = (ModificationBucket*) malloc(sizeof(ModificationBucket) * NUMBER_OF_BUCKETS);
+    listOfModificationsInEpoch = (Epoch_Modification*) malloc(sizeof(Epoch_Modification) * MAX_EPOCH);
+
 }
+
 
 /*
 *   ADD/GET/REMOVE MODIFICATIONS OF A EPOCH
@@ -22,13 +25,12 @@ void initHashMode()
 void insertModification(long epoch, long fatherKey, Modification* newModif)
 {
     int hashCode = fatherKey % NUMBER_OF_BUCKETS;
-    Modification* hashHead = hashOfModifications + hashCode;
+    ModificationBucket* hash = hashOfModifications + hashCode;
+    Modification* hashHead = hash->head;
 
-    if(hashHead->newNext == NULL)
+    if(hashHead == NULL)
     {
-        hashHead->epoch_k = newModif->epoch_k;
-        hashHead->father = newModif->father;
-        hashHead->newNext = newModif->newNext;
+      hashHead = newModif;
     }
     else
     {
@@ -40,7 +42,7 @@ void insertModification(long epoch, long fatherKey, Modification* newModif)
         hashHead->next = newModif;
     }
 
-    int epoch_position = epoch % MAX_EPOCHS;
+    int epoch_position = epoch % MAX_EPOCH;
 
     Epoch_Modification* newEpochModif = (Epoch_Modification*) malloc(sizeof(Epoch_Modification));
 
@@ -60,8 +62,8 @@ void insertModification(long epoch, long fatherKey, Modification* newModif)
     else
     {
         epochModif->modification = newEpochModif->modification;
+        free(newEpochModif);
     }
-
 }
 
 void addModification(long epoch, Element* father, Element* newNext)
@@ -84,30 +86,38 @@ void addModification(long epoch, Element* father, Element* newNext)
 
 Epoch_Modification* getEpochModifications(long epoch)
 {
-    int epoch_position = epoch % MAX_EPOCHS;
+    int epoch_position = epoch % MAX_EPOCH;
     return listOfModificationsInEpoch + epoch_position;
 }
 
 void* removeEpochModifications(long epoch)
 {
-
-    int epoch_position = epoch % MAX_EPOCHS;
+    int hashCode = 0;
+    ModificationBucket* hash;
+    Modification* newModif;
+    int epoch_position = epoch % MAX_EPOCH;
     Epoch_Modification* epochRemove = listOfModificationsInEpoch + epoch_position;
 
-    Epoch_Modification* removeModifications = epochRemove;
-    Epoch_Modification* freeModification;
-    while(removeModifications != NULL)
+    Epoch_Modification* removeEpochModifications = epochRemove;
+    //Epoch_Modification* freeEpochModification;
+    while(removeEpochModifications != NULL && removeEpochModifications->modification != NULL)
     {
-        Modification* newModif = removeModifications->modification;
-        if(newModif->previous != NULL)
-            newModif->previous->next = newModif->next;
-        free(newModif);
-        freeModification = removeModifications;
-        removeModifications = removeModifications->next;
+        newModif = removeEpochModifications->modification;
+        if(newModif->previous == NULL)
+        {
+          if(newModif->father != NULL)
+            hashCode = newModif->father->key % NUMBER_OF_BUCKETS;
 
-        free(freeModification);
+          hash = hashOfModifications + hashCode;
+          hash->head = newModif->next;
+        }
+        free(newModif);
+        //freeEpochModification = removeEpochModifications;
+        removeEpochModifications = removeEpochModifications->next;
+
+        //free(freeEpochModification);
     }
-    epochRemove->next = NULL ;
+    epochRemove->next = NULL;
     epochRemove->modification = NULL;
 
     return epochRemove;
@@ -120,7 +130,8 @@ void* removeEpochModifications(long epoch)
 Element* getNewNextElement(long fatherKey)
 {
     int hashCode = fatherKey % NUMBER_OF_BUCKETS;
-    Modification* hashHead = hashOfModifications + hashCode;
+    ModificationBucket* hash = hashOfModifications + hashCode;
+    Modification* hashHead = hash->head;
 
     Element* result = NULL;
     while(hashHead != NULL)
@@ -138,7 +149,8 @@ Element* getNewNextElement(long fatherKey)
 Element* getNewNextOfHead()
 {
     int hashCode = 0;
-    Modification* hashHead = hashOfModifications + hashCode;
+    ModificationBucket* hash = hashOfModifications + hashCode;
+    Modification* hashHead = hash->head;
 
     Element* result = NULL;
     while(hashHead != NULL)

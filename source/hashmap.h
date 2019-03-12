@@ -7,10 +7,8 @@
 #include <string.h>
 #include "list.h"
 
-
-#define MAX_EPOCHS 6
 #define NUMBER_OF_BUCKETS 20
-
+#define MAX_EPOCH 100
 
 typedef struct Modification
 {
@@ -22,6 +20,13 @@ typedef struct Modification
     struct Modification* previous;
 }Modification;
 
+
+typedef struct ModificationBucket
+{
+    Modification* head;
+
+}ModificationBucket;
+
 typedef struct Epoch_Modification
 {
     Modification* modification;
@@ -32,7 +37,7 @@ typedef struct Epoch_Modification
 /*
 *   INIT HASHMAP
 */
-void initHashMode();
+void initHashMode(long numberOfPages);
 
 /*
 *   ADD/GET/REMOVE MODIFICATIONS OF A EPOCH

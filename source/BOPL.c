@@ -171,7 +171,7 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 		*	the batching mechanism
 		*/
 		case HASH_MAP_MODE:
-			initHashMode();
+			initHashMode(numberOfPages);
 		case UNDO_LOG_MODE:
 			initMechanism(grain);
 		case FLUSH_ONLY_MODE:
@@ -628,7 +628,7 @@ void batchingTheFlushs(Element* nextPointer)
         while(safedPage <= nextPage)
         {
             Epoch_Modification* epochModification = getEpochModifications(safedPage);
-            while(epochModification != NULL)
+            while(epochModification != NULL && epochModification->modification != NULL)
             {
 								Element* father = epochModification->modification->father;
 								if(father != NULL)
