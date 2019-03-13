@@ -1,0 +1,6 @@
+OPERATION,FLUSH,OCCURENCES
+insert,10733.000000,1500000
+inplace_insert,0.000000,0
+remove,0.000000,0
+update,0.000000,0
+lookup,0.000000,0
