@@ -31,7 +31,7 @@ long safedPage = 0;
 double* csv_iteration_time = NULL;
 double* csv_critical_path_flushs = NULL;
 
-struct timespec tstart={0,0}, tend={0,0};
+struct timespec tstart = {0, 0}, tend = {0, 0}, totalStart = {0, 0}, totalEnd = {0, 0};
 int numberFlushsPerOperation = 0;
 
 
@@ -163,7 +163,7 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 		sprintf(nameTimeCSV, "%sPCM_m:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, TIME_GRAPH);
 		sprintf(nameFlushCSV, "%sPCM_m:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, FLUSH_GRAPH);
 	#endif
-
+	clock_gettime(CLOCK_MONOTONIC, &totalStart);
 	switch(mode)
 	{
 		/*
@@ -239,6 +239,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 	numberOfInserts ++;
 
 	csv_critical_path_flushs[INSERT_INDEX] += numberFlushsPerOperation;
+	csv_critical_path_flushs[TOTAL_INDEX] += numberFlushsPerOperation;
 	numberFlushsPerOperation = 0;
 	functionID ++;
 }
@@ -284,6 +285,7 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 	csv_iteration_time[INPLACE_INSERT_INDEX] += elapseTime;
 
 	csv_critical_path_flushs[INPLACE_INSERT_INDEX] += numberFlushsPerOperation;
+	csv_critical_path_flushs[TOTAL_INDEX] += numberFlushsPerOperation;
 	numberFlushsPerOperation = 0;
 	numberOfInplaceInserts++;
 	functionID ++;
@@ -324,6 +326,7 @@ void bopl_remove(long keyToRemove)
 	numberOfRemoves ++;
 
 	csv_critical_path_flushs[REMOVE_INDEX] += numberFlushsPerOperation;
+	csv_critical_path_flushs[TOTAL_INDEX] += numberFlushsPerOperation;
 	numberFlushsPerOperation = 0;
 	functionID ++;
 
@@ -359,6 +362,7 @@ void bopl_close()
 	*saveFunctionID = 0;
   latency(WRITE_DELAY);
 	FLUSH(saveFunctionID);
+	csv_critical_path_flushs[TOTAL_INDEX] ++;
 
 	munmap(saveFunctionID, sizeof(int));
 	munmap(buffer, (numberPages * pageSize));
@@ -371,6 +375,10 @@ void bopl_close()
 	close(workingPointerOffsetDescriptor);
  	close(headerPointerOffsetDescriptor);
 	close(tailPointerOffsetDescriptor);
+	clock_gettime(CLOCK_MONOTONIC, &totalEnd);
+	double elapsedTime = ((double)totalEnd.tv_sec + 1.0e-9*totalEnd.tv_nsec) - ((double)totalStart.tv_sec + 1.0e-9*totalStart.tv_nsec);
+
+	csv_iteration_time[TOTAL_INDEX] = elapsedTime;
 
 	writeGraphics(nameTimeCSV, csv_iteration_time, "TIME (s)");
 	writeGraphics(nameFlushCSV, csv_critical_path_flushs, "FLUSH");
@@ -419,7 +427,6 @@ void* bopl_lookup(long key)
 				FLUSH(saveFunctionID);
 				FENCE();
 				latency(WRITE_DELAY);
-
 				numberFlushsPerOperation ++;
 		case UNDO_LOG_MODE:
 				result = findElement(headerPointer, key);
@@ -997,7 +1004,7 @@ void writeGraphics(char* fileName, double* variableArray, char* variable)
 	fprintf(csvFile, "%s,%f,%ld\n", REMOVE_OPERATION, variableArray[REMOVE_INDEX], numberOfRemoves);
 	fprintf(csvFile, "%s,%f,%ld\n", UPDATE_OPERATION, variableArray[UPDATE_INDEX], numberOfUpdates);
 	fprintf(csvFile, "%s,%f,%ld\n", LOOKUP_OPERATION, variableArray[LOOKUP_INDEX], numberOfLookups);
-
+ 	fprintf(csvFile, "%s,%f\n", TOTAL_STRING, variableArray[TOTAL_INDEX]);
 	fclose(csvFile);
 
 	return;

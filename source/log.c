@@ -181,5 +181,4 @@ void flushFirstEntryOffset()
 {
   *firstEntryOffsetPointer = firstEntryOffset;
   FLUSH(firstEntryOffsetPointer);
-  numberFlushsPerOperation++;
 }

@@ -1,7 +1,7 @@
 #ifndef __FILE_MACRO_H__
 #define __FILE_MACRO_H__
 
-#define NUMBER_OF_OPERATIONS 5
+#define NUMBER_OF_OPERATIONS 6
 #define MAX_OF_SAVED_KEYS 5000
 
 #define INIT_OPERATION "init"
@@ -13,11 +13,14 @@
 #define CLOSE_OPERATION "close"
 #define CRASH_OPERATION "crash"
 
+#define TOTAL_STRING "Total:"
+
 #define INSERT_INDEX 0
 #define INPLACE_INSERT_INDEX 1
 #define LOOKUP_INDEX 2
 #define UPDATE_INDEX 3
 #define REMOVE_INDEX 4
+#define TOTAL_INDEX 5
 
 #define FILE_DELIMITER " "
 

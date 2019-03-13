@@ -40,10 +40,10 @@ int pop(Stack* stack, int modified)
     if (!isEmpty(stack))
     {
       result = stack->array[stack->bottom];
-      if(modified != 0)
+      if(modified != NO_MODIFY)
       {
         stack->bottom = (stack->bottom + 1) % stack->capacity;
-        stack->elements--;
+        stack->elements --;
       }
     }
     return result;
