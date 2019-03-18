@@ -34,11 +34,17 @@ typedef struct Epoch_Modification
     struct Epoch_Modification* next;
 }Epoch_Modification;
 
+typedef struct Epoch_Modification_Bucket
+{
+  Epoch_Modification* head;
+}Epoch_Modification_Bucket;
+
 /*
 *   INIT HASHMAP
+*   AND CLOSE
 */
 void initHashMode(long numberOfPages);
-
+void closeHashMode();
 /*
 *   ADD/GET/REMOVE MODIFICATIONS OF A EPOCH
 */

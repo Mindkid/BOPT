@@ -32,6 +32,8 @@ Element* generateElement(long key, size_t sizeOfValue, const void* value, Elemen
 
 /*********      SEARCH ELEMENT OR A FATHER     ****************/
 Element* findElement(Element* head, long key);
+Element* findElementDRAM(Element* head, long key);
+Element* findFatherElementDRAM(Element* head, long sonKey);
 Element* findUpdatedElement(Element* head, long key);
 Element* findFatherElement(Element* head, long sonKey);
 /**************************************************************/
@@ -43,6 +45,8 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
 void inplaceInsertUndoLog(long fatherKey, Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 					/*********** HASH_MAP_MODE ****************/
 void inplaceInsertHashMap(long fatherKey, Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
+					/*********** DRAM_MODE ****************/
+void inplaceInsertDRAM(long fatherKey, Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 /**************************************************************/
 
 /*****************      UPDATE FUNCTION    ********************/
@@ -52,6 +56,8 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
 int updateElementUndoLog(Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 					/*********** HASH_MAP_MODE ****************/
 int updateElementHashMap(Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
+					/*********** DRAM_MODE ****************/
+int updateElementDRAM(Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 /**************************************************************/
 
 /*****************      REMOVE FUNCTION    ********************/
@@ -61,6 +67,8 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
 int removeElementUndoLog(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 					/*********** HASH_MAP_MODE ****************/
 int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
+				/*********** DRAM_MODE ****************/
+int removeElementDRAM(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer);
 /**************************************************************/
 
 #endif

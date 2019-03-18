@@ -50,6 +50,7 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 
 #define SUBTRACT_POINTERS(prt1, prt2) ((char*) prt1 - (char*) prt2)
 #define ADD_OFFSET_TO_POINTER(prt, offset)  (Element*) (((char*) prt) + *offset)
+#define SUB_OFFSET_TO_POINTER(prt, offset)  (Element*) (((char*) prt) - *offset)
 /*
 *	The List can be operated in
 *	three modes:
@@ -66,6 +67,7 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define FLUSH_ONLY_MODE 0
 #define UNDO_LOG_MODE 1
 #define HASH_MAP_MODE 2
+#define DRAM_MODE 4
 
 /*
 * GRAPH RELATED VARIABLES

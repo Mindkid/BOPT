@@ -174,6 +174,7 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 			initHashMode(numberOfPages);
 		case UNDO_LOG_MODE:
 			initMechanism(grain);
+		case DRAM_MODE:
 		case FLUSH_ONLY_MODE:
 			listMode = mode;
 			break;
@@ -197,6 +198,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 	switch (listMode) {
 		case HASH_MAP_MODE:
 				// DO NOTHING
+		case DRAM_MODE:
 		case UNDO_LOG_MODE:
 				addElementInList(&tailPointer, newElement);
 				*tailPointerOffset = SUBTRACT_POINTERS(tailPointer, buffer);
@@ -275,6 +277,9 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 				latency(WRITE_DELAY);
 				numberFlushsPerOperation ++;
 				break;
+		case DRAM_MODE:
+				inplaceInsertDRAM(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
+				break;
 		default:
 				perror(BAD_INIT_ERROR);
 				exit(ERROR);
@@ -316,6 +321,9 @@ void bopl_remove(long keyToRemove)
 				 latency(WRITE_DELAY);
 				 numberFlushsPerOperation ++;
 				break;
+		case DRAM_MODE:
+				removeElementDRAM(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
+				break;
 		default:
 			perror(BAD_INIT_ERROR);
 			exit(ERROR);
@@ -342,13 +350,17 @@ void bopl_remove(long keyToRemove)
 	*/
 void bopl_close()
 {
-	if(listMode != FLUSH_ONLY_MODE)
+	if(listMode == HASH_MAP_MODE || listMode == UNDO_LOG_MODE)
 	{
 		workdone = 1;
 
 		sem_post(&workingSemaphore);
 		pthread_join(workingThread, NULL);
 
+		if(listMode == HASH_MAP_MODE)
+		{
+			closeHashMode();
+		}
 
 		munmap(savePointerOffset, sizeof(int));
 		munmap(dirtyPages, (numberPages/ BITS_PER_WORD));
@@ -396,10 +408,10 @@ void bopl_close()
 
 void bopl_crash()
 {
-    if(listMode != FLUSH_ONLY_MODE)
-    {
-	    pthread_cancel(workingThread);
-	    writeThrash();
+  if(listMode != FLUSH_ONLY_MODE)
+  {
+    pthread_cancel(workingThread);
+    writeThrash();
 	}
 	bopl_close();
 }
@@ -428,6 +440,7 @@ void* bopl_lookup(long key)
 				FENCE();
 				latency(WRITE_DELAY);
 				numberFlushsPerOperation ++;
+		case DRAM_MODE:
 		case UNDO_LOG_MODE:
 				result = findElement(headerPointer, key);
 				value = result->value;
@@ -483,6 +496,9 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
       case HASH_MAP_MODE:
             result = updateElementHashMap(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
             break;
+			case DRAM_MODE:
+						result = updateElementDRAM(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
+						break;
 			default:
 						perror(BAD_INIT_ERROR);
 						exit(ERROR);
@@ -601,6 +617,7 @@ void initMechanism(int* grain)
   {
       markPages();
       recoverFromLog(&headerPointer, buffer, workingPointer, headerPointerOffset, safedPage);
+			tailPointer = savePointer;
   }
   disablePages();
 
@@ -723,7 +740,6 @@ void* workingBatchThread(void* grain)
 		{
 			if(workingPointer >= savePointer)
 				batchingTheFlushs(workingPointer);
-
 			break;
 		}
 		else
@@ -735,7 +751,6 @@ void* workingBatchThread(void* grain)
 			}
 		}
 	}
-
 	return NULL;
 }
 
@@ -757,9 +772,10 @@ void markPages()
 	while(currentPage <= workingPage)
 	{
 		dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
-    latency(WRITE_DELAY);
 		FLUSH(dirtyPages + WORD_OFFSET(currentPage));
-		savePointer += pageSize;
+		latency(WRITE_DELAY);
+		FENCE();
+		savePointer = ADD_OFFSET_TO_POINTER(savePointer, &pageSize);
 		currentPage ++;
 	}
 
@@ -897,9 +913,9 @@ void handler(int sig, siginfo_t *si, void *unused)
 	switch(sig)
 	{
  		case SIGBUS:
-
  			break;
 		case SIGSEGV:
+			tailPointer->next = NULL;
 			break;
 	}
 }

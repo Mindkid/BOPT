@@ -5,7 +5,7 @@ Element* getNewNextElement(long fatherKey);
 Element* getNewNextOfHead();
 
 ModificationBucket* hashOfModifications;
-Epoch_Modification* listOfModificationsInEpoch;
+Epoch_Modification_Bucket* listOfModificationsInEpoch;
 
 /*
 *   This function inits the
@@ -14,8 +14,14 @@ Epoch_Modification* listOfModificationsInEpoch;
 void initHashMode(long numberOfPages)
 {
     hashOfModifications = (ModificationBucket*) malloc(sizeof(ModificationBucket) * NUMBER_OF_BUCKETS);
-    listOfModificationsInEpoch = (Epoch_Modification*) malloc(sizeof(Epoch_Modification) * MAX_EPOCH);
+    listOfModificationsInEpoch = (Epoch_Modification_Bucket*) malloc(sizeof(Epoch_Modification) * MAX_EPOCH);
 
+}
+
+void closeHashMode()
+{
+  free(hashOfModifications);
+  free(listOfModificationsInEpoch);
 }
 
 
@@ -49,9 +55,11 @@ void insertModification(long epoch, long fatherKey, Modification* newModif)
     newEpochModif->modification = newModif;
     newEpochModif->next = NULL;
 
-    Epoch_Modification* epochModif = listOfModificationsInEpoch + epoch_position;
+    Epoch_Modification_Bucket* epochBucket = listOfModificationsInEpoch + epoch_position;
 
-    if(epochModif->modification != NULL)
+    Epoch_Modification* epochModif = epochBucket->head;
+
+    if(epochBucket->head != NULL && epochModif->modification != NULL)
     {
         while(epochModif->next != NULL)
         {
@@ -61,8 +69,7 @@ void insertModification(long epoch, long fatherKey, Modification* newModif)
     }
     else
     {
-        epochModif->modification = newEpochModif->modification;
-        free(newEpochModif);
+        epochBucket->head = newEpochModif;
     }
 }
 
@@ -87,7 +94,8 @@ void addModification(long epoch, Element* father, Element* newNext)
 Epoch_Modification* getEpochModifications(long epoch)
 {
     int epoch_position = epoch % MAX_EPOCH;
-    return listOfModificationsInEpoch + epoch_position;
+    Epoch_Modification_Bucket* epochBucket = listOfModificationsInEpoch + epoch_position;
+    return epochBucket->head;
 }
 
 void* removeEpochModifications(long epoch)
@@ -96,10 +104,10 @@ void* removeEpochModifications(long epoch)
     ModificationBucket* hash;
     Modification* newModif;
     int epoch_position = epoch % MAX_EPOCH;
-    Epoch_Modification* epochRemove = listOfModificationsInEpoch + epoch_position;
+    Epoch_Modification_Bucket* epochBucket = listOfModificationsInEpoch + epoch_position;
 
-    Epoch_Modification* removeEpochModifications = epochRemove;
-    //Epoch_Modification* freeEpochModification;
+    Epoch_Modification* removeEpochModifications = epochBucket->head;
+    Epoch_Modification* freeEpochModification;
     while(removeEpochModifications != NULL && removeEpochModifications->modification != NULL)
     {
         newModif = removeEpochModifications->modification;
@@ -107,20 +115,20 @@ void* removeEpochModifications(long epoch)
         {
           if(newModif->father != NULL)
             hashCode = newModif->father->key % NUMBER_OF_BUCKETS;
+          else
+            hashCode = 0;
 
           hash = hashOfModifications + hashCode;
           hash->head = newModif->next;
         }
         free(newModif);
-        //freeEpochModification = removeEpochModifications;
+        freeEpochModification = removeEpochModifications;
         removeEpochModifications = removeEpochModifications->next;
-
-        //free(freeEpochModification);
+        free(freeEpochModification);
     }
-    epochRemove->next = NULL;
-    epochRemove->modification = NULL;
+    epochBucket->head = NULL;
 
-    return epochRemove;
+    return epochBucket;
 }
 
 

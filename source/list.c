@@ -52,12 +52,51 @@ Element* findElement(Element* head, long key)
       break;
     }
     result = result->next;
+    latency(READ_DELAY);
   }
 
 	return result;
 }
 
 Element* findFatherElement(Element* head, long sonKey)
+{
+	Element* result = head;
+	if(result->key != sonKey)
+	{
+		while(result->next != NULL)
+		{
+		    if(result->next->key == sonKey)
+		    {
+			    break;
+	      }
+      result = result->next;
+      latency(READ_DELAY);
+		}
+	}
+
+	return result;
+}
+
+/**************************************************************/
+/*********      SEARCH ELEMENT OR A FATHER     ****************/
+
+Element* findElementDRAM(Element* head, long key)
+{
+	Element* result = head;
+
+  while(result->next != NULL)
+  {
+    if(result->key == key)
+    {
+      break;
+    }
+    result = result->next;
+  }
+
+	return result;
+}
+
+Element* findFatherElementDRAM(Element* head, long sonKey)
 {
 	Element* result = head;
 	if(result->key != sonKey)
@@ -219,8 +258,33 @@ void inplaceInsertHashMap(long fatherKey, Element* newElement, Element** headerP
 
 }
 
+        /*********** DRAM_MODE ****************/
 
+void inplaceInsertDRAM(long fatherKey, Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer)
+{
+  Element* head = *headerPointer;
+
+  if(fatherKey == 0)
+  {
+    if(head->key != newElement->key)
+      newElement->next = head;
+    head = newElement;
+  }
+  else
+  {
+    Element* father = findElementDRAM(head, fatherKey);
+    newElement->next = father->next;
+    father->next = newElement;
+
+    if(newElement->next == NULL)
+    {
+      *tailPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
+      *tailPointer = newElement;
+    }
+  }
+}
 /**************************************************************/
+
 
 /*****************      UPDATE FUNCTION    ********************/
           /*********** FLUSH_ONLY_MODE ****************/
@@ -349,6 +413,40 @@ int updateElementHashMap(Element* newElement, Element** headerPointer, int workP
 	return result;
 }
 
+            /*********** DRAM_MODE ****************/
+
+int updateElementDRAM(Element* newElement, Element** headerPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer)
+{
+	int result = SUCCESS;
+  Element* head = *headerPointer;
+
+	if(head->key == newElement->key)
+	{
+		newElement->next = head->next;
+		head = newElement;
+	}
+	else
+	{
+    Element* father = findFatherElementDRAM(head, newElement->key);
+    if(father->next != NULL)
+    {
+      newElement->next = father->next->next;
+      father->next = newElement;
+    }
+    else
+    {
+       result = ERROR;
+    }
+	}
+
+  if(newElement->next == NULL)
+  {
+      *tailPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
+      *tailPointer = newElement;
+  }
+
+	return result;
+}
 
 /**************************************************************/
 
@@ -517,4 +615,51 @@ int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* wor
 	    	}
     }
 	return result;
+}
+
+
+            /*********** DRAM_MODE ****************/
+
+int removeElementDRAM(long keyToRemove, Element** headerPointer, Element* workingPointer, int workPage, Element** tailPointer, int* tailPointerOffset, Element* buffer)
+{
+		int result = SUCCESS;
+    Element* head = *headerPointer;
+
+    if(head->key == keyToRemove)
+    {
+        if(head->next == NULL)
+        {
+            head = workingPointer;
+        }
+        else
+        {
+            head = head->next;
+        }
+
+        *headerPointer = head ;
+
+        if(head->next == NULL)
+        {
+          *tailPointerOffset = SUBTRACT_POINTERS(head, buffer);
+          *tailPointer = head;
+        }
+    }
+    else
+    {
+			Element* father = findFatherElementDRAM(*headerPointer, keyToRemove);
+      if(father->next != NULL)
+      {
+          father->next = father->next->next;
+          if(father->next == NULL)
+          {
+            *tailPointerOffset = SUBTRACT_POINTERS(father, buffer);
+            *tailPointer = father;
+          }
+      }
+      else
+    	{
+     		result = ERROR;
+    	}
+    }
+		return result;
 }

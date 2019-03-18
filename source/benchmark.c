@@ -109,9 +109,10 @@ int main(int argc, char* argv[])
   }
   if(probability == MIN_PROBALILITY)
   {
-    for(i = 0; i < NUMBER_OF_OPERATIONS; i++)
+    int operations = NUMBER_OF_OPERATIONS - 1;
+    for(i = 0; i < operations; i++)
     {
-      probability +=  MAX_PROBABILITY / NUMBER_OF_OPERATIONS;
+      probability +=  MAX_PROBABILITY / operations;
       prob_of_operation[i] =  probability;
     }
   }
