@@ -602,11 +602,12 @@ int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* wor
 				Element* fatherSon = getNextOf(father);
         if(fatherSon != NULL)
         {
-            addModification(workPage, father, getNextOf(fatherSon));
-            if(fatherSon->next == NULL)
+            Element* nextFatherSon = getNextOf(fatherSon);
+            addModification(workPage, father, nextFatherSon);
+            if(nextFatherSon == NULL)
             {
-              *tailPointerOffset = SUBTRACT_POINTERS(fatherSon, buffer);
-              *tailPointer = fatherSon;
+              *tailPointerOffset = SUBTRACT_POINTERS(father, buffer);
+              *tailPointer = father;
             }
         }
         else

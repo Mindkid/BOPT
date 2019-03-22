@@ -39,6 +39,8 @@ typedef struct Epoch_Modification_Bucket
   Epoch_Modification* head;
 }Epoch_Modification_Bucket;
 
+extern int cacheLineSize;
+
 /*
 *   INIT HASHMAP
 *   AND CLOSE
