@@ -52,7 +52,7 @@ Element* findElement(Element* head, long key)
       break;
     }
     result = result->next;
-    latency(READ_DELAY);
+    latency(READ_DELAY/cacheLineSize);
   }
 
 	return result;
@@ -70,7 +70,7 @@ Element* findFatherElement(Element* head, long sonKey)
 			    break;
 	      }
       result = result->next;
-      latency(READ_DELAY);
+      latency(READ_DELAY/cacheLineSize);
 		}
 	}
 

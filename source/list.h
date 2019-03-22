@@ -21,6 +21,7 @@ typedef struct Element
 #include "BOPL.h"
 
 extern int numberFlushsPerOperation;
+extern int cacheLineSize;
 
 /***************      ADD ELEMENT IN LIST     ****************/
 Element* addElementInList(Element** tailPointer, Element* toAdd);

@@ -67,7 +67,7 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define FLUSH_ONLY_MODE 0
 #define UNDO_LOG_MODE 1
 #define HASH_MAP_MODE 2
-#define DRAM_MODE 4
+#define DRAM_MODE 3
 
 /*
 * GRAPH RELATED VARIABLES
