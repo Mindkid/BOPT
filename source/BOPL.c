@@ -440,12 +440,12 @@ void* bopl_lookup(long key)
 				FENCE();
 				latency(WRITE_DELAY);
 				numberFlushsPerOperation ++;
-		case DRAM_MODE:
-				result = findElementDRAM(headerPointer, key);
-				value = result->value;
-				break;
 		case UNDO_LOG_MODE:
 				result = findElement(headerPointer, key);
+				value = result->value;
+				break;
+		case DRAM_MODE:
+				result = findElementDRAM(headerPointer, key);
 				value = result->value;
 				break;
 		default:
