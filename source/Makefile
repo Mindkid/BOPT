@@ -1,4 +1,4 @@
-CC=gcc -D_FILE_OFFSET_BITS=64 -g -Wall -O3
+CC=gcc -D_FILE_OFFSET_BITS=64 -g -Wall 
 CFLAGS=-lpthread -lrt
 
 all: boplFileReader benchmark boplFileReaderSTTRAM
