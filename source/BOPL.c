@@ -123,7 +123,7 @@ int* saveFunctionID = NULL;
 *	The mode it's configurated in the
 *	BOPL_init function
 */
-int listMode;
+int listMode = 0;
 
 void  setSignalHandler();
 void handler(int sig, siginfo_t *si, void *unused);
@@ -199,6 +199,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 		case HASH_MAP_MODE:
 				// DO NOTHING
 		case DRAM_MODE:
+				// DO NOTHING
 		case UNDO_LOG_MODE:
 				addElementInList(&tailPointer, newElement);
 				*tailPointerOffset = SUBTRACT_POINTERS(tailPointer, buffer);
@@ -986,7 +987,7 @@ void checkThreshold(size_t sizeOfValue)
 	int lastPage =  getPointerPage(workingPointer);
 	int nextPage = getPointerPage(nextPointer);
 
-	if(listMode != FLUSH_ONLY_MODE )
+	if(listMode != FLUSH_ONLY_MODE)
 	{
 		if(lastPage < nextPage)
 		{
