@@ -30,20 +30,19 @@ long safedPage = 0;
 */
 double* csv_iteration_time = NULL;
 double* csv_critical_path_flushs = NULL;
+int* csv_operations_probability = NULL;
+char** csv_operations_names = NULL;
+long* csv_operations_occurrences = NULL;
 
 struct timespec tstart = {0, 0}, tend = {0, 0}, totalStart = {0, 0}, totalEnd = {0, 0};
 int numberFlushsPerOperation = 0;
 
-
-char nameTimeCSV[MAX_CSV_NAME];
-char nameFlushCSV[MAX_CSV_NAME];
-
-long numberOfInserts = 0;
-long numberOfInplaceInserts = 0;
-long numberOfRemoves = 0;
-long numberOfUpdates = 0;
-long numberOfLookups = 0;
-
+/*
+*	This variable it's just used
+*	To print the information to
+*	the csv
+*/
+int grainToPrint = 0;
 
 int cacheLineSize = 0;
 
@@ -132,10 +131,10 @@ void checkThreshold(size_t sizeOfValue);
 int initBufferMapping(long numberOfPages);
 void disablePages();
 void markPages();
-void writeGraphics(char* fileName, double* variableArray, char* operation);
-void printNumberOfOperations();
+void writeGraphics();
 Element* createElement(long key, size_t sizeOfElement, void* value);
 static inline uint64_t rdtsc(void);
+char* printTheMode();
 /*
 *	This are the function of the
 *	librarry BOPL this are the ones
@@ -150,19 +149,35 @@ static inline uint64_t rdtsc(void);
 
 int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int probInsert, int probInplaceInsert, int probLookup, int probUpdate, int probRemove, int execution)
 {
+	int i;
 	setSignalHandler();
 	int functionId = initBufferMapping(numberOfPages);
 
 	csv_iteration_time = (double*) malloc(sizeof(double) * NUMBER_OF_OPERATIONS);
 	csv_critical_path_flushs = (double*) malloc(sizeof(double) * NUMBER_OF_OPERATIONS);
+	csv_operations_names = (char**) malloc(sizeof(char) * NUMBER_OF_OPERATIONS);
 
-	#ifdef __STT_RAM__
-		sprintf(nameTimeCSV, "%sSTT-RAM_m:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, TIME_GRAPH);
-		sprintf(nameFlushCSV, "%sSTT-RAM_m:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, FLUSH_GRAPH);
-	#else
-		sprintf(nameTimeCSV, "%sPCM_m:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, TIME_GRAPH);
-		sprintf(nameFlushCSV, "%sPCM_m:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_t:%d_%s", GRAPH_DIR, mode, iterations, probInsert, probInplaceInsert, probLookup, probUpdate, probRemove, execution, FLUSH_GRAPH);
-	#endif
+	for(i = 0; i < NUMBER_OF_OPERATIONS; i++)
+	{
+			csv_operations_names[i] = (char*) malloc(sizeof(char) * MAX_OPERATION_SIZE);
+	}
+
+	csv_operations_probability = (int*) malloc(sizeof(int) * TOTAL_INDEX);
+	csv_operations_occurrences = (long*) malloc(sizeof(long) * TOTAL_INDEX);
+
+	csv_operations_probability[INSERT_INDEX] = probInsert;
+	csv_operations_probability[INPLACE_INSERT_INDEX] = probInplaceInsert;
+	csv_operations_probability[LOOKUP_INDEX] = probLookup;
+	csv_operations_probability[UPDATE_INDEX] = probUpdate;
+	csv_operations_probability[REMOVE_INDEX] = probRemove;
+
+	csv_operations_names[INSERT_INDEX] = INSERT_OPERATION;
+	csv_operations_names[INPLACE_INSERT_INDEX] = INPLACE_INSERT_OPERATION;
+	csv_operations_names[LOOKUP_INDEX] = LOOKUP_OPERATION;
+	csv_operations_names[UPDATE_INDEX] = UPDATE_OPERATION;
+	csv_operations_names[REMOVE_INDEX] = REMOVE_OPERATION;
+	csv_operations_names[TOTAL_INDEX] = TOTAL_STRING;
+
 	clock_gettime(CLOCK_MONOTONIC, &totalStart);
 	switch(mode)
 	{
@@ -174,6 +189,7 @@ int bopl_init(long numberOfPages, int* grain, int mode, int iterations, int prob
 			initHashMode(numberOfPages);
 		case UNDO_LOG_MODE:
 			initMechanism(grain);
+			grainToPrint = *grain;
 		case DRAM_MODE:
 		case FLUSH_ONLY_MODE:
 			listMode = mode;
@@ -238,11 +254,12 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 
 	clock_gettime(CLOCK_MONOTONIC, &tend);
 	elapseTime = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
-	csv_iteration_time[INSERT_INDEX] += elapseTime;
-	numberOfInserts ++;
 
+	csv_iteration_time[INSERT_INDEX] += elapseTime;
+	csv_operations_occurrences[INSERT_INDEX] ++;
 	csv_critical_path_flushs[INSERT_INDEX] += numberFlushsPerOperation;
 	csv_critical_path_flushs[TOTAL_INDEX] += numberFlushsPerOperation;
+
 	numberFlushsPerOperation = 0;
 	functionID ++;
 }
@@ -288,12 +305,13 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 
 	clock_gettime(CLOCK_MONOTONIC, &tend);
 	elapseTime = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
-	csv_iteration_time[INPLACE_INSERT_INDEX] += elapseTime;
 
+	csv_iteration_time[INPLACE_INSERT_INDEX] += elapseTime;
+	csv_operations_occurrences[INPLACE_INSERT_INDEX] ++;
 	csv_critical_path_flushs[INPLACE_INSERT_INDEX] += numberFlushsPerOperation;
 	csv_critical_path_flushs[TOTAL_INDEX] += numberFlushsPerOperation;
+
 	numberFlushsPerOperation = 0;
-	numberOfInplaceInserts++;
 	functionID ++;
 }
 
@@ -331,11 +349,12 @@ void bopl_remove(long keyToRemove)
 	}
 	clock_gettime(CLOCK_MONOTONIC, &tend);
 	elapseTime = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
-	csv_iteration_time[REMOVE_INDEX] += elapseTime;
-	numberOfRemoves ++;
 
+	csv_iteration_time[REMOVE_INDEX] += elapseTime;
+	csv_operations_occurrences[REMOVE_INDEX] ++;
 	csv_critical_path_flushs[REMOVE_INDEX] += numberFlushsPerOperation;
 	csv_critical_path_flushs[TOTAL_INDEX] += numberFlushsPerOperation;
+
 	numberFlushsPerOperation = 0;
 	functionID ++;
 
@@ -393,10 +412,12 @@ void bopl_close()
 
 	csv_iteration_time[TOTAL_INDEX] = elapsedTime;
 
-	writeGraphics(nameTimeCSV, csv_iteration_time, "TIME (s)");
-	writeGraphics(nameFlushCSV, csv_critical_path_flushs, "FLUSH");
+	writeGraphics();
 
-	printNumberOfOperations();
+	free(csv_iteration_time);
+	free(csv_critical_path_flushs);
+	free(csv_operations_occurrences);
+	free(csv_operations_probability);
 }
 
 	/*
@@ -461,12 +482,13 @@ void* bopl_lookup(long key)
 
 	clock_gettime(CLOCK_MONOTONIC, &tend);
 	elapseTime =  ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
 	csv_iteration_time[LOOKUP_INDEX] += elapseTime;
-
+	csv_operations_occurrences[LOOKUP_INDEX] ++;
 	csv_critical_path_flushs[LOOKUP_INDEX] += numberFlushsPerOperation;
-	numberFlushsPerOperation = 0;
+	csv_critical_path_flushs[TOTAL_INDEX] += numberFlushsPerOperation;
 
-	numberOfLookups ++;
+	numberFlushsPerOperation = 0;
 	functionID ++;
 
 	return value;
@@ -513,12 +535,13 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 
 	clock_gettime(CLOCK_MONOTONIC, &tend);
 	elapseTime = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
+	csv_operations_occurrences[UPDATE_INDEX] ++;
 	csv_iteration_time[UPDATE_INDEX] += elapseTime;
-
 	csv_critical_path_flushs[UPDATE_INDEX] += numberFlushsPerOperation;
-	numberFlushsPerOperation = 0;
+	csv_critical_path_flushs[TOTAL_INDEX] += numberFlushsPerOperation;
 
-	numberOfUpdates ++;
+	numberFlushsPerOperation = 0;
 	functionID ++;
 
 	return result;
@@ -1013,32 +1036,59 @@ void checkThreshold(size_t sizeOfValue)
 * values
 */
 
-void writeGraphics(char* fileName, double* variableArray, char* variable)
+void writeGraphics()
 {
-	printf("File Name: %s\n", fileName);
-	FILE* csvFile = fopen(fileName, "w+");
+	int i;
+	char* mode = printTheMode();
+	time_t t = time(NULL);
+	struct tm localt = *localtime(&t);
 
-	fprintf(csvFile, "%s,%s,%s\n", "OPERATION", variable, "OCCURENCES");
-	fprintf(csvFile, "%s,%f,%ld\n", INSERT_OPERATION, variableArray[INSERT_INDEX], numberOfInserts);
-	fprintf(csvFile, "%s,%f,%ld\n", INPLACE_INSERT_OPERATION, variableArray[INPLACE_INSERT_INDEX], numberOfInplaceInserts);
-	fprintf(csvFile, "%s,%f,%ld\n", REMOVE_OPERATION, variableArray[REMOVE_INDEX], numberOfRemoves);
-	fprintf(csvFile, "%s,%f,%ld\n", UPDATE_OPERATION, variableArray[UPDATE_INDEX], numberOfUpdates);
-	fprintf(csvFile, "%s,%f,%ld\n", LOOKUP_OPERATION, variableArray[LOOKUP_INDEX], numberOfLookups);
- 	fprintf(csvFile, "%s,%f\n", TOTAL_STRING, variableArray[TOTAL_INDEX]);
+	FILE* csvFile = fopen(CSV_NAME, "a+");
+
+	if(fgetc(csvFile) == EOF)
+	{
+		fprintf(csvFile, "DATE,MEMORY_TYPE,MODE,GRAIN,");
+		for(i = 0; i < TOTAL_INDEX; i++)
+		{
+			fprintf(csvFile, "PERCENTAGE_%s,OCCURRENCES_%s,TIME_%s,FLUSH_%s,", csv_operations_names[i], csv_operations_names[i],csv_operations_names[i],csv_operations_names[i]);
+		}
+		fprintf(csvFile, "%s_TIME(s), %s_FLUSH\n", csv_operations_names[TOTAL_INDEX],csv_operations_names[TOTAL_INDEX]);
+	}
+
+	fprintf(csvFile, "%d-%d-%d_%d:%d:%d,", localt.tm_year + 1900, localt.tm_mon + 1, localt.tm_mday, localt.tm_hour, localt.tm_min, localt.tm_sec);
+	fprintf(csvFile, "%s,%s,%d,", MEMORY_TYPE, mode , grainToPrint);
+
+	for(i = 0; i < TOTAL_INDEX; i++)
+	{
+		fprintf(csvFile, "%d,%ld,%f,%f,", csv_operations_probability[i], csv_operations_occurrences[i], csv_iteration_time[i], csv_critical_path_flushs[i]);
+	}
+
+	fprintf(csvFile, "%f,%f\n", csv_iteration_time[TOTAL_INDEX], csv_critical_path_flushs[TOTAL_INDEX]);
+
 	fclose(csvFile);
 
 	return;
 }
 
-void printNumberOfOperations()
+char* printTheMode()
 {
-	printf("Number of Inserts: %ld\n", numberOfInserts);
-	printf("Number of Inplace Inserts: %ld\n", numberOfInplaceInserts);
-	printf("Number of Lookups: %ld\n", numberOfLookups);
-	printf("Number of Updates: %ld\n", numberOfUpdates);
-	printf("Number of Removes: %ld\n", numberOfRemoves);
+	char* mode = (char*) malloc(sizeof(char) * 20);
+	switch (listMode) {
+		case HASH_MAP_MODE:
+				mode = "BOPL_HASH_MAP_MODE";
+				break;
+		case DRAM_MODE:
+				mode = "DRAM_MODE";
+				break;
+		case UNDO_LOG_MODE:
+				mode = "BOPL_UNDO_LOG_MODE";
+				break;
+		case FLUSH_ONLY_MODE:
+				mode = "FLUSH_MODE";
+				break;
+			}
+	return mode;
 }
-
 
 void latency(int delay)
 {

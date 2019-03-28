@@ -38,12 +38,18 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 
-#ifdef __STT_RAM__
-  #define WRITE_DELAY 100
-  #define READ_DELAY 100
+#ifdef __OPTANE__
+  #define MEMORY_TYPE "OPTANE"
 #else
-  #define WRITE_DELAY 300
-  #define READ_DELAY 300
+  #ifdef __STT_RAM__
+    #define WRITE_DELAY 100
+    #define READ_DELAY 100
+    #define MEMORY_TYPE "STT-RAM"
+  #else
+    #define WRITE_DELAY 300
+    #define READ_DELAY 300
+    #define MEMORY_TYPE "PCM"
+  #endif
 #endif
 
 #define SIZEOF(element) sizeof(Element) + element->sizeOfValue  - 1
@@ -72,9 +78,6 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 /*
 * GRAPH RELATED VARIABLES
 */
-#define MAX_CSV_NAME 100
-#define GRAPH_DIR "./graphs/"
-#define TIME_GRAPH "time.csv"
-#define FLUSH_GRAPH "flush.csv"
+#define CSV_NAME "./graphs/BOPL_INFORMATION.csv"
 
 #endif

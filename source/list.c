@@ -126,9 +126,9 @@ Element* findUpdatedElement(Element* head, long key)
     {
       if(trueHead->key == key)
       {
+        trueHead = nextElement;
         break;
 	    }
-	    trueHead = nextElement;
 	    nextElement = getNextOf(trueHead);
     }
 
@@ -146,10 +146,10 @@ Element* findUpdatedFatherElement(Element* head, long sonKey)
     {
         if(nextElement->key == sonKey)
         {
+            trueHead = nextElement;
             break;
         }
-      trueHead = nextElement;
-      nextElement = getNextOf(trueHead);
+      nextElement = getNextOf(nextElement);
     }
   }
   return trueHead;
