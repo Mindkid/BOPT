@@ -126,10 +126,10 @@ Element* findUpdatedElement(Element* head, long key)
     {
       if(trueHead->key == key)
       {
-        trueHead = nextElement;
         break;
 	    }
-	    nextElement = getNextOf(trueHead);
+      trueHead = nextElement;
+	    nextElement = getNextOf(nextElement);
     }
 
     return trueHead;
@@ -138,20 +138,17 @@ Element* findUpdatedElement(Element* head, long key)
 Element* findUpdatedFatherElement(Element* head, long sonKey)
 {
   Element* trueHead = getHead(head);
-
   Element* nextElement = getNextOf(trueHead);
-  if(trueHead->key != sonKey)
-	{
-    while(nextElement != NULL)
-    {
-        if(nextElement->key == sonKey)
-        {
-            trueHead = nextElement;
-            break;
-        }
-      nextElement = getNextOf(nextElement);
-    }
+  while(nextElement != NULL)
+  {
+      if(nextElement->key == sonKey)
+      {
+        break;
+      }
+    trueHead = nextElement;
+    nextElement = getNextOf(nextElement);
   }
+
   return trueHead;
 }
 /**************************************************************/
