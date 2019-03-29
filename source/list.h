@@ -23,6 +23,9 @@ typedef struct Element
 extern int numberFlushsPerOperation;
 extern int cacheLineSize;
 
+#ifdef __OPTANE__
+	extern Element* savePointer;
+#endif
 /***************      ADD ELEMENT IN LIST     ****************/
 Element* addElementInList(Element** tailPointer, Element* toAdd);
 /**************************************************************/

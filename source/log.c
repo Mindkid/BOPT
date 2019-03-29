@@ -74,36 +74,54 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
           if(lastEntry->oldNext == NULL)
           {
             *headerPointerOffset =  SUBTRACT_POINTERS(workingPointer, buffer);
-            FLUSH(headerPointerOffset);
-            latency(WRITE_DELAY);
+            #ifdef __OPTANE__
+              msync(headerPointerOffset, sizeof(int), MS_SYNC);
+            #else
+              FLUSH(headerPointerOffset);
+              latency(WRITE_DELAY);
+            #endif
             *headerPointer = workingPointer;
           }
           else
           {
             *headerPointerOffset = SUBTRACT_POINTERS(lastEntry->oldNext, buffer);
-            FLUSH(headerPointerOffset);
-            latency(WRITE_DELAY);
+            #ifdef __OPTANE__
+              msync(headerPointerOffset, sizeof(int), MS_SYNC);
+            #else
+              FLUSH(headerPointerOffset);
+              latency(WRITE_DELAY);
+            #endif
             *headerPointer = lastEntry->oldNext;
           }
         }
         else
         {
-            recoverStructure(lastEntry->father, lastEntry->oldNext);
+            recoverStructure(lastEntry->father, lastEntry->oldNext, lastEntry->epoch_k, buffer);
         }
 
         lastEntryOffset = (lastEntryOffset - 1) % numberOfEntries;
         lastEntry = logEntries + lastEntryOffset;
     }
     *lastEntryOffsetPointer = lastEntryOffset;
-    FLUSH(lastEntryOffsetPointer);
-    FENCE();
-    latency(WRITE_DELAY);
+    #ifdef __OPTANE__
+      msync(lastEntryOffsetPointer, sizeof(int), MS_SYNC);
+    #else
+      FLUSH(lastEntryOffsetPointer);
+      FENCE();
+      latency(WRITE_DELAY);
+    #endif
 }
 
-void recoverStructure(Element* father, Element* oldNext)
+void recoverStructure(Element* father, Element* oldNext, long epoch, Element* buffer)
 {
     father->next = oldNext;
-    FLUSH(father->next);
+    #ifdef __OPTANE__
+      long offsetToPageStart = (epoch * pageSize);
+      Element* pageStart = ADD_OFFSET_TO_POINTER(buffer, &offsetToPageStart);
+      msync(pageStart, SUBTRACT_POINTERS(father, pageStart), MS_SYNC);
+    #else
+      FLUSH(father->next);
+    #endif
 }
 
 void addLogEntry(Element* father, Element* oldNext, long page)
@@ -121,21 +139,31 @@ void addLogEntry(Element* father, Element* oldNext, long page)
   else
     lastEntry = logEntries;
 
-  while(entry < lastEntry)
-  {
-      FLUSH(entry);
-      FENCE();
-      latency(WRITE_DELAY);
-      entry = (LogEntry*) ADD_OFFSET_TO_POINTER(entry, &cacheLineSize);
-      if(listMode == UNDO_LOG_MODE)
-        numberFlushsPerOperation ++;
-  }
+  #ifdef __OPTANE__
+    msync(logEntries, SUBTRACT_POINTERS(logEntries, entry), MS_SYNC);
+    if(listMode == UNDO_LOG_MODE)
+      numberFlushsPerOperation ++;
+  #else
+    while(entry < lastEntry)
+    {
+        FLUSH(entry);
+        FENCE();
+        latency(WRITE_DELAY);
+        entry = (LogEntry*) ADD_OFFSET_TO_POINTER(entry, &cacheLineSize);
+        if(listMode == UNDO_LOG_MODE)
+          numberFlushsPerOperation ++;
+    }
+  #endif
 
   *lastEntryOffsetPointer = lastEntryOffset;
 
-  FLUSH(lastEntryOffsetPointer);
-  FENCE();
-  latency(WRITE_DELAY);
+  #ifdef __OPTANE__
+    msync(lastEntryOffsetPointer, sizeof(int), MS_SYNC);
+  #else
+    FLUSH(lastEntryOffsetPointer);
+    FENCE();
+    latency(WRITE_DELAY);
+  #endif
   if(listMode == UNDO_LOG_MODE)
     numberFlushsPerOperation ++;
 }
@@ -182,5 +210,11 @@ LogEntries* getEpochEntries(long epoch)
 void flushFirstEntryOffset()
 {
   *firstEntryOffsetPointer = firstEntryOffset;
-  FLUSH(firstEntryOffsetPointer);
+  #ifdef __OPTANE__
+    msync(firstEntryOffsetPointer, sizeof(int), MS_SYNC);
+  #else
+    FLUSH(firstEntryOffsetPointer);
+    FENCE();
+    latency(WRITE_DELAY);
+  #endif
 }

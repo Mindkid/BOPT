@@ -30,6 +30,10 @@ typedef struct LogEntries
 extern int cacheLineSize;
 extern int numberFlushsPerOperation;
 extern int listMode;
+
+#ifdef __OPTANE__
+extern long pageSize;
+#endif
 /*
 *   Function that it's used
 *   to recover the structur
@@ -37,7 +41,7 @@ extern int listMode;
 */
 void initLog(int grain);
 void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPointer, int* headerPointerOffset, long safedPage);
-void recoverStructure(Element* father, Element* oldNext);
+void recoverStructure(Element* father, Element* oldNext, long epoch, Element* buffer);
 void addLogEntry(Element* father, Element* oldNext, long page);
 LogEntries* getEpochEntries(long epoch);
 void flushFirstEntryOffset();

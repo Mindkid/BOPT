@@ -128,6 +128,7 @@ void  setSignalHandler();
 void handler(int sig, siginfo_t *si, void *unused);
 void initMechanism(int* grain);
 void checkThreshold(size_t sizeOfValue);
+void processThreshold(Element* nextPointer);
 int initBufferMapping(long numberOfPages);
 void disablePages();
 void markPages();
@@ -222,29 +223,45 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 				break;
 		case FLUSH_ONLY_MODE:
 				forceFlush(newElement);
-				FLUSH(workingPointerOffset);
-				FENCE();
-				latency(WRITE_DELAY);
+				#ifdef __OPTANE__
+					msync(workingPointerOffset, sizeof(int), MS_SYNC);
+				#else
+					FLUSH(workingPointerOffset);
+					FENCE();
+					latency(WRITE_DELAY);
+				#endif
 				numberFlushsPerOperation ++;
 				newElement = addElementInList(&tailPointer, newElement);
 				if(newElement->next != NULL)
         {
-          FLUSH(newElement->next);
-					FENCE();
-					latency(WRITE_DELAY);
+					#ifdef __OPTANE__
+						long sizeToSync = SUBTRACT_POINTERS(newElement, savePointer);
+						msync(savePointer, sizeToSync, MS_SYNC);
+					#else
+						FLUSH(newElement->next);
+						FENCE();
+						latency(WRITE_DELAY);
+					#endif
 					numberFlushsPerOperation ++;
         }
-        latency(READ_DELAY);
         *tailPointerOffset = SUBTRACT_POINTERS(tailPointer, buffer);
-        FLUSH(tailPointerOffset);
-				FENCE();
-				latency(WRITE_DELAY);
+				#ifdef __OPTANE__
+					msync(tailPointerOffset, sizeof(int), MS_SYNC);
+				#else
+					FLUSH(tailPointerOffset);
+					FENCE();
+					latency(WRITE_DELAY);
+				#endif
 				numberFlushsPerOperation ++;
-        latency(READ_DELAY);
+
 				*saveFunctionID = functionID;
-				FLUSH(saveFunctionID);
-				FENCE();
-				latency(WRITE_DELAY);
+				#ifdef __OPTANE__
+					msync(saveFunctionID, sizeof(int), MS_SYNC);
+				#else
+					FLUSH(saveFunctionID);
+					FENCE();
+					latency(WRITE_DELAY);
+				#endif
 				numberFlushsPerOperation ++;
 				break;
 		default:
@@ -284,15 +301,23 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 		    inplaceInsertHashMap(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 			break;
 		case FLUSH_ONLY_MODE:
-	  		FLUSH(workingPointerOffset);
-				FENCE();
-				latency(WRITE_DELAY);
+				#ifdef __OPTANE__
+					msync(workingPointerOffset, sizeof(int), MS_SYNC);
+				#else
+		  		FLUSH(workingPointerOffset);
+					FENCE();
+					latency(WRITE_DELAY);
+				#endif
 				numberFlushsPerOperation ++;
 				inplaceInsertFlush(fatherKey, newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
 				*saveFunctionID = functionID;
-	      FLUSH(saveFunctionID);
-				FENCE();
-				latency(WRITE_DELAY);
+				#ifdef __OPTANE__
+					msync(saveFunctionID, sizeof(int), MS_SYNC);
+				#else
+		      FLUSH(saveFunctionID);
+					FENCE();
+					latency(WRITE_DELAY);
+				#endif
 				numberFlushsPerOperation ++;
 				break;
 		case DRAM_MODE:
@@ -335,9 +360,13 @@ void bopl_remove(long keyToRemove)
 		case FLUSH_ONLY_MODE:
 				 removeElementFlush(keyToRemove, &headerPointer, headerPointerOffset, buffer, workingPointer, &tailPointer, tailPointerOffset);
 				 *saveFunctionID = functionID;
-				 FLUSH(saveFunctionID);
-				 FENCE();
-				 latency(WRITE_DELAY);
+				 #ifdef __OPTANE__
+				 	msync(saveFunctionID, sizeof(int), MS_SYNC);
+				 #else
+				 	FLUSH(saveFunctionID);
+				 	FENCE();
+				 	latency(WRITE_DELAY);
+				 #endif
 				 numberFlushsPerOperation ++;
 				break;
 		case DRAM_MODE:
@@ -392,8 +421,12 @@ void bopl_close()
 	}
 
 	*saveFunctionID = 0;
-  latency(WRITE_DELAY);
-	FLUSH(saveFunctionID);
+	#ifdef __OPTANE__
+		msync(saveFunctionID, sizeof(int), MS_SYNC);
+	#else
+	  latency(WRITE_DELAY);
+		FLUSH(saveFunctionID);
+	#endif
 	csv_critical_path_flushs[TOTAL_INDEX] ++;
 
 	munmap(saveFunctionID, sizeof(int));
@@ -458,9 +491,13 @@ void* bopl_lookup(long key)
 				break;
 		case FLUSH_ONLY_MODE:
 				*saveFunctionID = functionID;
-				FLUSH(saveFunctionID);
-				FENCE();
-				latency(WRITE_DELAY);
+				#ifdef __OPTANE__
+					msync(saveFunctionID, sizeof(int), MS_SYNC);
+				#else
+					FLUSH(saveFunctionID);
+					FENCE();
+					latency(WRITE_DELAY);
+				#endif
 				numberFlushsPerOperation ++;
 		case UNDO_LOG_MODE:
 				result = findElement(headerPointer, key);
@@ -505,15 +542,24 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 	switch(listMode)
 	{
 	    case FLUSH_ONLY_MODE:
-						FLUSH(workingPointerOffset);
-						FENCE();
-						latency(WRITE_DELAY);
+						#ifdef __OPTANE__
+							msync(workingPointerOffset, sizeof(int), MS_SYNC);
+						#else
+							FLUSH(workingPointerOffset);
+							FENCE();
+							latency(WRITE_DELAY);
+						#endif
 						numberFlushsPerOperation ++;
 	        	result = updateElementFlush(newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
 						*saveFunctionID = functionID;
-						FLUSH(saveFunctionID);
-						FENCE();
-						latency(WRITE_DELAY);
+
+						#ifdef __OPTANE__
+							msync(saveFunctionID, sizeof(int), MS_SYNC);
+						#else
+							FLUSH(saveFunctionID);
+							FENCE();
+							latency(WRITE_DELAY);
+						#endif
 						numberFlushsPerOperation ++;
 						break;
       case UNDO_LOG_MODE:
@@ -593,13 +639,23 @@ int initBufferMapping(long numberOfPages)
 
 	workingPointer = buffer;
 	workingPointer = ADD_OFFSET_TO_POINTER(workingPointer, workingPointerOffset);
-	//workingPointer += *workingPointerOffset;
+
 	headerPointer = buffer;
 	headerPointer = ADD_OFFSET_TO_POINTER(headerPointer, headerPointerOffset);
-	//headerPointer += *headerPointerOffset;
+
 	tailPointer = buffer;
 	tailPointer = ADD_OFFSET_TO_POINTER(tailPointer, tailPointerOffset);
-	//tailPointer += *tailPointerOffset;
+
+	#ifdef __OPTANE__
+		if(listMode == FLUSH_ONLY_MODE)
+		{
+			savePointerOffsetDescriptor = openFile(&offsetFileCreated, SAVE_POINTER_OFFSET_FILE_NAME, &sizeOfInt);
+			savePointer = buffer;
+			savePointerOffset = (int*) mmap(0, sizeOfInt, PROT_READ | PROT_WRITE, MAP_SHARED, savePointerOffsetDescriptor, 0);
+			if(!offsetFileCreated)
+				savePointer = ADD_OFFSET_TO_POINTER(savePointer, savePointerOffset);
+		}
+	#endif
 
 	return functionID;
 }
@@ -646,6 +702,10 @@ void initMechanism(int* grain)
       recoverFromLog(&headerPointer, buffer, workingPointer, headerPointerOffset, safedPage);
 			tailPointer = savePointer;
   }
+	else
+	{
+			workingPointer = savePointer;
+	}
   disablePages();
 
   if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
@@ -653,108 +713,202 @@ void initMechanism(int* grain)
 }
 
 
-/*
-*	This are the functions related
-*	to the thread execution
-*/
+#ifdef __OPTANE__
+	/*
+	*	This are the functions related
+	*	to the thread execution This function
+	*	flushs all modified information
+	*			OPTANE
+	*/
 
-void batchingTheFlushs(Element* nextPointer)
-{
-    Element* toFlush = savePointer;
-    while(toFlush <= nextPointer)
-    {
-    	FLUSH(toFlush);
-      //pmem_flush(flushPointer, cacheLineSize);
-      toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
-      latency(WRITE_DELAY);
-    }
-    latency(WRITE_DELAY);
-    FLUSH(workingPointerOffset);
-		FENCE();
-    savePointer = toFlush;
+	void batchingTheFlushs(Element* nextPointer)
+	{
+			Element* pageStart;
+			long offsetToPageStart;
+			long sizeOfFlush = SUBTRACT_POINTERS(nextPointer, savePointer);
+			msync(savePointer, sizeOfFlush, MS_SYNC);
 
-    if(listMode == HASH_MAP_MODE)
-    {
-        int nextPage = getPointerPage(nextPointer);
-        while(safedPage <= nextPage)
-        {
-            Epoch_Modification* epochModification = getEpochModifications(safedPage);
-            while(epochModification != NULL && epochModification->modification != NULL)
-            {
-								Element* father = epochModification->modification->father;
-								if(father != NULL)
-								{
-									addLogEntry(father, father->next, safedPage);
-									father->next = epochModification->modification->newNext;
-									if(father->next != NULL)
-                  {
-                    latency(WRITE_DELAY);
-										FLUSH(father->next);
-                  }
-								}
-								else
-								{
-									addLogEntry(NULL, headerPointer, safedPage);
-									headerPointer = epochModification->modification->newNext;
-									*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
-                  latency(WRITE_DELAY);
-									FLUSH(headerPointerOffset);
-								}
-
-                epochModification = epochModification->next;
-            }
-            removeEpochModifications(safedPage);
-            safedPage ++;
-        }
-    }
-		else
-		{
-			int nextPage = getPointerPage(nextPointer);
-			while(safedPage <= nextPage)
+			savePointer = nextPointer;
+			if(listMode == HASH_MAP_MODE)
 			{
-				LogEntries* epochEntries = getEpochEntries(safedPage);
-				while(epochEntries != NULL)
-				{
-					Element* father = epochEntries->entry->father;
-					if(father == NULL)
+					int nextPage = getPointerPage(nextPointer);
+					while(safedPage <= nextPage)
 					{
-						*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
-            latency(WRITE_DELAY);
-	          FLUSH(headerPointerOffset);
+							Epoch_Modification* epochModification = getEpochModifications(safedPage);
+							while(epochModification != NULL && epochModification->modification != NULL)
+							{
+									Element* father = epochModification->modification->father;
+									if(father != NULL)
+									{
+										addLogEntry(father, father->next, safedPage);
+										father->next = epochModification->modification->newNext;
+										if(father->next != NULL)
+										{
+											offsetToPageStart = (safedPage * pageSize);
+											pageStart = ADD_OFFSET_TO_POINTER(buffer,  &offsetToPageStart);
+											sizeOfFlush = SUBTRACT_POINTERS(pageStart, father);
+											msync(pageStart, sizeOfFlush, MS_SYNC);
+										}
+									}
+									else
+									{
+										addLogEntry(NULL, headerPointer, safedPage);
+										headerPointer = epochModification->modification->newNext;
+										*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
+										msync(headerPointerOffset, sizeof(int), MS_SYNC);
+									}
+									epochModification = epochModification->next;
+							}
+							removeEpochModifications(safedPage);
+							safedPage ++;
 					}
-					else
-					{
-						if(father->next != NULL)
-            {
-              latency(WRITE_DELAY);
-							FLUSH(father->next);
-            }
-					}
-					epochEntries = epochEntries->next;
-				}
-				free(epochEntries);
-				safedPage ++;
 			}
-			flushFirstEntryOffset();
-		}
-    latency(WRITE_DELAY);
-		FLUSH(tailPointerOffset);
-		FENCE();
+			else
+			{
+				int nextPage = getPointerPage(nextPointer);
+				while(safedPage <= nextPage)
+				{
+					LogEntries* epochEntries = getEpochEntries(safedPage);
+					while(epochEntries != NULL)
+					{
+						Element* father = epochEntries->entry->father;
+						if(father == NULL)
+						{
+							*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
+							msync(headerPointerOffset, sizeof(int), MS_SYNC);
+						}
+						else
+						{
+							if(father->next != NULL)
+							{
+								offsetToPageStart = (safedPage * pageSize);
+								pageStart = ADD_OFFSET_TO_POINTER(buffer, &offsetToPageStart);
+								sizeOfFlush = SUBTRACT_POINTERS(pageStart, father);
+								msync(pageStart, sizeOfFlush, MS_SYNC);
+							}
+						}
+						epochEntries = epochEntries->next;
+					}
+					free(epochEntries);
+					safedPage ++;
+				}
+				flushFirstEntryOffset();
+			}
+			msync(tailPointerOffset, sizeof(int), MS_SYNC);
 
-		*saveFunctionID  = temporaryFunctionID;
-    latency(WRITE_DELAY);
-		FLUSH(saveFunctionID);
-		FENCE();
+			*saveFunctionID  = temporaryFunctionID;
+			msync(saveFunctionID, sizeof(int), MS_SYNC);
 
-    *savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
-    latency(WRITE_DELAY);
-    FLUSH(savePointerOffset);
-		FENCE();
-}
+			*savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
+			msync(savePointerOffset, sizeof(int), MS_SYNC);
+	}
+#else
+	/*
+	*	This are the functions related
+	*	to the thread execution This function
+	*	flushs all modified information
+	*			PCM and STT-RAM
+	*/
+
+	void batchingTheFlushs(Element* nextPointer)
+	{
+	    Element* toFlush = savePointer;
+	    while(toFlush <= nextPointer)
+	    {
+	    	FLUSH(toFlush);
+	      //pmem_flush(flushPointer, cacheLineSize);
+	      toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
+	      latency(WRITE_DELAY);
+	    }
+	    latency(WRITE_DELAY);
+	    FLUSH(workingPointerOffset);
+			FENCE();
+	    savePointer = toFlush;
+
+	    if(listMode == HASH_MAP_MODE)
+	    {
+	        int nextPage = getPointerPage(nextPointer);
+	        while(safedPage <= nextPage)
+	        {
+	            Epoch_Modification* epochModification = getEpochModifications(safedPage);
+	            while(epochModification != NULL && epochModification->modification != NULL)
+	            {
+									Element* father = epochModification->modification->father;
+									if(father != NULL)
+									{
+										addLogEntry(father, father->next, safedPage);
+										father->next = epochModification->modification->newNext;
+										if(father->next != NULL)
+	                  {
+	                    latency(WRITE_DELAY);
+											FLUSH(father->next);
+	                  }
+									}
+									else
+									{
+										addLogEntry(NULL, headerPointer, safedPage);
+										headerPointer = epochModification->modification->newNext;
+										*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
+	                  latency(WRITE_DELAY);
+										FLUSH(headerPointerOffset);
+									}
+
+	                epochModification = epochModification->next;
+	            }
+	            removeEpochModifications(safedPage);
+	            safedPage ++;
+	        }
+	    }
+			else
+			{
+				int nextPage = getPointerPage(nextPointer);
+				while(safedPage <= nextPage)
+				{
+					LogEntries* epochEntries = getEpochEntries(safedPage);
+					while(epochEntries != NULL)
+					{
+						Element* father = epochEntries->entry->father;
+						if(father == NULL)
+						{
+							*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
+	            latency(WRITE_DELAY);
+		          FLUSH(headerPointerOffset);
+						}
+						else
+						{
+							if(father->next != NULL)
+	            {
+	              latency(WRITE_DELAY);
+								FLUSH(father->next);
+	            }
+						}
+						epochEntries = epochEntries->next;
+					}
+					free(epochEntries);
+					safedPage ++;
+				}
+				flushFirstEntryOffset();
+			}
+	    latency(WRITE_DELAY);
+			FLUSH(tailPointerOffset);
+			FENCE();
+
+			*saveFunctionID  = temporaryFunctionID;
+	    latency(WRITE_DELAY);
+			FLUSH(saveFunctionID);
+			FENCE();
+
+	    *savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
+	    latency(WRITE_DELAY);
+	    FLUSH(savePointerOffset);
+			FENCE();
+	}
+#endif
 
 void* workingBatchThread(void* grain)
 {
 	Element* nextPage;
+	int leftToFillPage = 0;
 	int granularity = *((int*) grain);
 
 	granularity = (granularity <= 0)?  1 : granularity;
@@ -766,7 +920,11 @@ void* workingBatchThread(void* grain)
 		if(workdone)
 		{
 			if(workingPointer >= savePointer)
+			{
+				leftToFillPage = getLeftToFillPage(workingPointer);
+				workingPointer = ADD_OFFSET_TO_POINTER(workingPointer, &leftToFillPage);
 				batchingTheFlushs(workingPointer);
+			}
 			break;
 		}
 		else
@@ -796,23 +954,40 @@ void markPages()
 	int currentPage = safedPage;
 	int workingPage = workPage;
 
-	while(currentPage <= workingPage)
-	{
-		dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
-		FLUSH(dirtyPages + WORD_OFFSET(currentPage));
-		latency(WRITE_DELAY);
-		FENCE();
-		savePointer = ADD_OFFSET_TO_POINTER(savePointer, &pageSize);
-		currentPage ++;
-	}
-
+	#ifdef __OPTANE__
+		while(currentPage <= workingPage)
+		{
+			dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
+			savePointer = ADD_OFFSET_TO_POINTER(savePointer, &pageSize);
+			currentPage ++;
+		}
+		msync(dirtyPages, (numberPages/ BITS_PER_WORD), MS_SYNC);
+	#else
+		while(currentPage <= workingPage)
+		{
+			dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
+			FLUSH(dirtyPages + WORD_OFFSET(currentPage));
+			latency(WRITE_DELAY);
+			FENCE();
+			savePointer = ADD_OFFSET_TO_POINTER(savePointer, &pageSize);
+			currentPage ++;
+		}
+	#endif
 	workingPointer = savePointer;
 
 	*workingPointerOffset = SUBTRACT_POINTERS(workingPointer, buffer);
-	FLUSH(workingPointerOffset);
-
+	#ifdef __OPTANE__
+		msync(workingPointerOffset, sizeof(int), MS_SYNC);
+	#else
+		FLUSH(workingPointerOffset);
+	#endif
 	*savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
-	FLUSH(savePointerOffset);
+
+	#ifdef __OPTANE__
+		msync(savePointerOffset, sizeof(int), MS_SYNC);
+	#else
+		FLUSH(savePointerOffset);
+	#endif
 }
 
 	/*
@@ -852,6 +1027,7 @@ void disablePages()
 	int bitArrayValue;
 
 	for(i = 0; i < numberPages / BITS_PER_WORD; i++)
+	{
 		for(j = 0; j < BITS_PER_WORD; j++)
 		{
 			bitArrayValue = (dirtyPages[WORD_OFFSET(i)] & (1 << BIT_OFFSET(j)));
@@ -873,6 +1049,7 @@ void disablePages()
 				}
 			}
 		}
+	}
 }
 
 void writeThrash()
@@ -948,29 +1125,43 @@ void handler(int sig, siginfo_t *si, void *unused)
 }
 
 
-
+#ifdef __OPTANE__
 /*
 *	Function that it's used
 *	to force flush while in
 *	the FLUSH_ONLY_MODE mode
+* of __OPTANE__
 */
-int forceFlush(Element* toFlush)
-{
-	unsigned long sizeOfElement = SIZEOF(toFlush);
-	Element* toStop = ADD_OFFSET_TO_POINTER(toFlush, &sizeOfElement);
-
-	while(toFlush < toStop)
+	int forceFlush(Element* toFlush)
 	{
-		FLUSH(toFlush);
-	 	toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
-		numberFlushsPerOperation ++;
-    latency(WRITE_DELAY);
-		FENCE();
+		long sizeToSync = SUBTRACT_POINTERS(toFlush, savePointer);
+		msync(savePointer, sizeToSync, MS_SYNC);
+		return 1;
 	}
+#else
+/*
+*	Function that it's used
+*	to force flush while in
+*	the FLUSH_ONLY_MODE mode
+* of PCM and STT-RAM
+*/
+	int forceFlush(Element* toFlush)
+	{
+		unsigned long sizeOfElement = SIZEOF(toFlush);
+		Element* toStop = ADD_OFFSET_TO_POINTER(toFlush, &sizeOfElement);
 
-	return 1;
-}
+		while(toFlush < toStop)
+		{
+			FLUSH(toFlush);
+		 	toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
+			numberFlushsPerOperation ++;
+	    latency(WRITE_DELAY);
+			FENCE();
+		}
 
+		return 1;
+	}
+#endif
 /*
 *	This functions generates a ELEMENT
 *	and checks if the struct passes a
@@ -996,7 +1187,6 @@ Element* createElement(long key, size_t sizeOfElement, void* value)
 void checkThreshold(size_t sizeOfValue)
 {
 	int sizeOfElement = sizeof(Element) + sizeOfValue - 1;
-	int fillPage;
 
 	Element* nextPointer = ADD_OFFSET_TO_POINTER(workingPointer, &sizeOfElement);
 	Element* endOfBuffer = ADD_OFFSET_TO_POINTER(buffer, &sizeOfFile);
@@ -1007,28 +1197,84 @@ void checkThreshold(size_t sizeOfValue)
 		exit(ERROR);
 	}
 
-	int lastPage =  getPointerPage(workingPointer);
-	int nextPage = getPointerPage(nextPointer);
+	processThreshold(nextPointer);
+}
 
-	if(listMode != FLUSH_ONLY_MODE)
+#ifdef __OPTANE__
+/*
+*	This function it's used when it's
+* testing the block mode ( __OPTANE__)
+*/
+	void processThreshold(Element* nextPointer)
 	{
+		int fillPage;
+		int lastPage =  getPointerPage(workingPointer);
+		int nextPage = getPointerPage(nextPointer);
+
 		if(lastPage < nextPage)
 		{
 			fillPage = getLeftToFillPage(workingPointer);
 			workingPointer = ADD_OFFSET_TO_POINTER(workingPointer, &fillPage);
-			sem_post(&workingSemaphore);
-			workPage ++;
+			if(listMode == HASH_MAP_MODE || listMode == UNDO_LOG_MODE)
+			{
+				sem_post(&workingSemaphore);
+				workPage ++;
+			}
+			else
+			{
+				if(listMode == FLUSH_ONLY_MODE)
+				{
+					savePointer = workingPointer;
+					*savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
+					msync(savePointerOffset, sizeof(int), MS_SYNC);
+				}
+			}
+		}
+		else
+		{
+			*saveFunctionID = functionID;
+			if(listMode == FLUSH_ONLY_MODE)
+			{
+				msync(saveFunctionID, sizeof(int),  MS_SYNC);
+				numberFlushsPerOperation ++;
+			}
 		}
 	}
-	else
-	{
-		*saveFunctionID = functionID;
-    latency(WRITE_DELAY);
-		FLUSH(saveFunctionID);
-		numberFlushsPerOperation ++;
-	}
-}
 
+#else
+/*
+*	This function it's used when it's
+* testing the Non volatile RAM mode
+*	(PCM or __STT_RAM__) PCM it's default
+*/
+	void processThreshold(Element* nextPointer)
+	{
+		int fillPage;
+		int lastPage =  getPointerPage(workingPointer);
+		int nextPage = getPointerPage(nextPointer);
+
+		if(listMode == HASH_MAP_MODE || listMode == UNDO_LOG_MODE)
+		{
+			if(lastPage < nextPage)
+			{
+				fillPage = getLeftToFillPage(workingPointer);
+				workingPointer = ADD_OFFSET_TO_POINTER(workingPointer, &fillPage);
+				sem_post(&workingSemaphore);
+				workPage ++;
+			}
+		}
+		else
+		{
+			*saveFunctionID = functionID;
+			if(listMode == FLUSH_ONLY_MODE)
+			{
+				latency(WRITE_DELAY);
+				FLUSH(saveFunctionID);
+				numberFlushsPerOperation ++;
+			}
+		}
+	}
+#endif
 
 /*
 *	This fnction creates csv files

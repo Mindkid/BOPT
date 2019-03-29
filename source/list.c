@@ -52,7 +52,9 @@ Element* findElement(Element* head, long key)
       break;
     }
     result = result->next;
-    latency(READ_DELAY/cacheLineSize);
+    #ifndef __OPTANE__
+      latency(READ_DELAY/cacheLineSize);
+    #endif
   }
 
 	return result;
@@ -70,7 +72,9 @@ Element* findFatherElement(Element* head, long sonKey)
 			    break;
 	      }
       result = result->next;
-      latency(READ_DELAY/cacheLineSize);
+      #ifndef __OPTANE__
+        latency(READ_DELAY/cacheLineSize);
+      #endif
 		}
 	}
 
@@ -168,9 +172,13 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
 
       forceFlush(newElement);
       *headerPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
-			FLUSH(headerPointerOffset);
-      FENCE();
-      latency(WRITE_DELAY);
+      #ifdef __OPTANE__
+        msync(headerPointerOffset, sizeof(int), MS_SYNC);
+      #else
+        FLUSH(headerPointerOffset);
+        FENCE();
+        latency(WRITE_DELAY);
+      #endif
       numberFlushsPerOperation ++;
 
 	    head = newElement;
@@ -183,17 +191,24 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
         forceFlush(newElement);
 
         father->next = newElement;
-        FLUSH(father->next);
-        FENCE();
-        latency(WRITE_DELAY);
-
+        #ifdef __OPTANE__
+          msync(savePointer, SUBTRACT_POINTERS(savePointer, father), MS_SYNC);
+        #else
+          FLUSH(father->next);
+          FENCE();
+          latency(WRITE_DELAY);
+        #endif
         numberFlushsPerOperation ++;
         if(newElement->next == NULL)
         {
           *tailPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
-          FLUSH(tailPointerOffset);
-          FENCE();
-          latency(WRITE_DELAY);
+          #ifdef __OPTANE__
+            msync(tailPointerOffset, sizeof(int), MS_SYNC);
+          #else
+            FLUSH(tailPointerOffset);
+            FENCE();
+            latency(WRITE_DELAY);
+          #endif
           numberFlushsPerOperation ++;
           *tailPointer = newElement;
         }
@@ -297,25 +312,34 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
     forceFlush(newSon);
 
     *headerPointerOffset = SUBTRACT_POINTERS(newSon, buffer);
-    FLUSH(headerPointerOffset);
-    FENCE();
-    latency(WRITE_DELAY);
+    #ifdef __OPTANE__
+      msync(headerPointerOffset, sizeof(int), MS_SYNC);
+    #else
+      FLUSH(headerPointerOffset);
+      FENCE();
+      latency(WRITE_DELAY);
+    #endif
     numberFlushsPerOperation ++;
     head = newSon;
   }
   else
   {
     Element* father = findFatherElement(head, newSon->key);
-    latency(READ_DELAY);
+    #ifndef __OPTANE__
+      latency(READ_DELAY);
+    #endif
     if(father->next != NULL)
     {
       newSon->next = father->next->next;
       forceFlush(newSon);
-
       father->next = newSon;
-      FLUSH(father->next);
-      FENCE();
-      latency(WRITE_DELAY);
+      #ifdef __OPTANE__
+        msync(savePointer, SUBTRACT_POINTERS(savePointer, father), MS_SYNC);
+      #else
+        FLUSH(father->next);
+        FENCE();
+        latency(WRITE_DELAY);
+      #endif
       numberFlushsPerOperation ++;
     }
     else
@@ -326,11 +350,15 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
 
   if(newSon->next == NULL)
   {
-      latency(READ_DELAY);
       *tailPointerOffset = SUBTRACT_POINTERS(newSon, buffer);
-      FLUSH(tailPointerOffset);
-      FENCE();
-      latency(WRITE_DELAY);
+      #ifdef __OPTANE__
+        msync(tailPointerOffset, sizeof(int), MS_SYNC);
+      #else
+        latency(READ_DELAY);
+        FLUSH(tailPointerOffset);
+        FENCE();
+        latency(WRITE_DELAY);
+      #endif
       *tailPointer = newSon;
       numberFlushsPerOperation ++;
   }
@@ -461,18 +489,26 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
       if(head->next == NULL)
       {
           *headerPointerOffset = SUBTRACT_POINTERS(workingPointer, buffer);
-          FLUSH(headerPointerOffset);
-          FENCE();
-          latency(WRITE_DELAY);
+          #ifdef __OPTANE__
+            msync(headerPointerOffset, sizeof(int), MS_SYNC);
+          #else
+            FLUSH(headerPointerOffset);
+            FENCE();
+            latency(WRITE_DELAY);
+          #endif
           head = workingPointer;
           numberFlushsPerOperation ++;
       }
       else
       {
           *headerPointerOffset = SUBTRACT_POINTERS(head->next, buffer);
-          FLUSH(headerPointerOffset);
-          FENCE();
-          latency(WRITE_DELAY);
+          #ifdef __OPTANE__
+            msync(headerPointerOffset, sizeof(int), MS_SYNC);
+          #else
+            FLUSH(headerPointerOffset);
+            FENCE();
+            latency(WRITE_DELAY);
+          #endif
           head = head->next;
           numberFlushsPerOperation ++;
       }
@@ -481,9 +517,13 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
       if(head->next == NULL)
       {
         *tailPointerOffset = SUBTRACT_POINTERS(head, buffer);
-        FLUSH(tailPointerOffset);
-        FENCE();
-        latency(WRITE_DELAY);
+        #ifdef __OPTANE__
+          msync(tailPointerOffset, sizeof(int), MS_SYNC);
+        #else
+          FLUSH(tailPointerOffset);
+          FENCE();
+          latency(WRITE_DELAY);
+        #endif
         *tailPointer = head;
         numberFlushsPerOperation ++;
       }
@@ -496,17 +536,25 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
           father->next = father->next->next;
           if(father->next != NULL)
           {
-            FLUSH(father->next);
-            FENCE();
-            latency(WRITE_DELAY);
+            #ifdef __OPTANE__
+              msync(savePointer, SUBTRACT_POINTERS(father, savePointer), MS_SYNC);
+            #else
+              FLUSH(father->next);
+              FENCE();
+              latency(WRITE_DELAY);
+            #endif
             numberFlushsPerOperation ++;
           }
           else
           {
             *tailPointerOffset = SUBTRACT_POINTERS(father, buffer);
-            FLUSH(tailPointerOffset);
-            FENCE();
-            latency(WRITE_DELAY);
+            #ifdef __OPTANE__
+              msync(tailPointerOffset, sizeof(int), MS_SYNC);
+            #else
+              FLUSH(tailPointerOffset);
+              FENCE();
+              latency(WRITE_DELAY);
+            #endif
             *tailPointer = father;
             numberFlushsPerOperation ++;
           }

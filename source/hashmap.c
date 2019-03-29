@@ -189,7 +189,9 @@ Element* getNextOf(Element* father)
     if(result == NULL)
     {
         result = father->next;
-        latency(READ_DELAY/cacheLineSize);
+        #ifndef __OPTANE__
+          latency(READ_DELAY/cacheLineSize);
+        #endif
     }
     return result;
 }
