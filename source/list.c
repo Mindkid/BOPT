@@ -156,7 +156,6 @@ Element* findUpdatedFatherElement(Element* head, long sonKey)
       nextElement = getNextOf(nextElement);
     }
   }
-
   return trueHead;
 }
 /**************************************************************/
@@ -271,7 +270,6 @@ void inplaceInsertHashMap(long fatherKey, Element* newElement, Element** headerP
       *tailPointer = newElement;
     }
   }
-
 }
 
         /*********** DRAM_MODE ****************/

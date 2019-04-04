@@ -26,6 +26,7 @@
 #define FILE_DELIMITER " "
 
 #define FILE_DIR "./tests/"
+#define OPTANE_FILE_DIR "./testsOptane/"
 #define DEFAULT_FILE_NAME "defaultBenchmark"
 #define FILE_EXTENSION ".bopl"
 #define MAX_FILE_NAME 200

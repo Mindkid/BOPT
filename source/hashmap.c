@@ -111,23 +111,28 @@ void* removeEpochModifications(long epoch)
     while(removeEpochModifications != NULL && removeEpochModifications->modification != NULL)
     {
         newModif = removeEpochModifications->modification;
+
+        if(newModif->father != NULL)
+          hashCode = newModif->father->key % NUMBER_OF_BUCKETS;
+        else
+          hashCode = 0;
+        hash = hashOfModifications + hashCode;
+
         if(newModif->previous == NULL)
         {
-          if(newModif->father != NULL)
-            hashCode = newModif->father->key % NUMBER_OF_BUCKETS;
-          else
-            hashCode = 0;
-
-          hash = hashOfModifications + hashCode;
           hash->head = newModif->next;
         }
+        else
+        {
+            newModif->previous->next = newModif->next;
+        }
+        
         free(newModif);
         freeEpochModification = removeEpochModifications;
         removeEpochModifications = removeEpochModifications->next;
         free(freeEpochModification);
     }
     epochBucket->head = NULL;
-
     return epochBucket;
 }
 

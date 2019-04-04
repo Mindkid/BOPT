@@ -32,7 +32,7 @@
 *
 */
 int prob_of_operation[NUMBER_OF_OPERATIONS];
-
+int optane = 0;
 void help();
 void creatAndFillTestFile(int numberPages, int grain, int numberOfIterations, int crashLine, int mode, int execution);
 
@@ -94,6 +94,9 @@ int main(int argc, char* argv[])
         case 'e':
           executions = atoi(optarg);
           break;
+        case 't':
+          optane = 1;
+          break;
         case 'h':
         default:
           help();
@@ -151,8 +154,10 @@ void creatAndFillTestFile(int numberOfPages, int grain, int numberOfIterations, 
 
   savedKeys = createStack(numberOfIterations);
 
-
-  snprintf(newFileName, MAX_FILE_NAME, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_s:%d_e:%d%s", FILE_DIR, mode, numberOfIterations, prob_of_operation[INSERT_INDEX], prob_of_operation[INPLACE_INSERT_INDEX], prob_of_operation[LOOKUP_INDEX], prob_of_operation[UPDATE_INDEX], prob_of_operation[REMOVE_INDEX], numberOfPages, execution, FILE_EXTENSION);
+  if(optane)
+    snprintf(newFileName, MAX_FILE_NAME, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_s:%d_e:%d%s", OPTANE_FILE_DIR, mode, numberOfIterations, prob_of_operation[INSERT_INDEX], prob_of_operation[INPLACE_INSERT_INDEX], prob_of_operation[LOOKUP_INDEX], prob_of_operation[UPDATE_INDEX], prob_of_operation[REMOVE_INDEX], numberOfPages, execution, FILE_EXTENSION);
+  else  
+    snprintf(newFileName, MAX_FILE_NAME, "%sm:%d_o:%d_i:%d_p:%d_l:%d_u:%d_r:%d_s:%d_e:%d%s", FILE_DIR, mode, numberOfIterations, prob_of_operation[INSERT_INDEX], prob_of_operation[INPLACE_INSERT_INDEX], prob_of_operation[LOOKUP_INDEX], prob_of_operation[UPDATE_INDEX], prob_of_operation[REMOVE_INDEX], numberOfPages, execution, FILE_EXTENSION);
 
   //char* filePath = strcat(fileName);
   FILE* file = fopen(newFileName, "w+");
@@ -263,6 +268,7 @@ void help()
   puts("\t -s SIZE: Number of pages that are allocated.");
   puts("\t -m MODE: Mode to BOPL operate see macroLib.h for more info.");
   puts("\t -e NUMBER_OF_EXECUTIONS: Number of times the benchmark it's created.");
+  puts("\t -t : To create tests for OPTANE.");
   puts("\t -h : To see help.");
   puts("");
 }
