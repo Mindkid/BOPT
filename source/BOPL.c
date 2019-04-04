@@ -443,6 +443,7 @@ void bopl_close()
 	clock_gettime(CLOCK_MONOTONIC, &totalEnd);
 	double elapsedTime = ((double)totalEnd.tv_sec + 1.0e-9*totalEnd.tv_nsec) - ((double)totalStart.tv_sec + 1.0e-9*totalStart.tv_nsec);
 
+	printf("Duration %f seconds! \n", elapseTime);
 	csv_iteration_time[TOTAL_INDEX] = elapsedTime;
 
 	writeGraphics();
