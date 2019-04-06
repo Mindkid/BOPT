@@ -134,7 +134,6 @@ void disablePages();
 void markPages();
 void writeGraphics();
 Element* createElement(long key, size_t sizeOfElement, void* value);
-static inline uint64_t rdtsc(void);
 char* printTheMode();
 /*
 *	This are the function of the
@@ -1339,13 +1338,11 @@ char* printTheMode()
 
 void latency(int delay)
 {
-  int64_t time = rdtsc();
-  while(rdtsc() - time < delay);
-}
-
-static inline uint64_t rdtsc(void)
-{
-    uint32_t eax, edx;
-    asm volatile("rdtsc\n\t": "=a" (eax), "=d" (edx));
-    return (uint64_t)eax | (uint64_t)edx << 32;
+	struct timespec start, end;
+	clock_gettime( CLOCK_MONOTONIC, &start);
+	clock_gettime( CLOCK_MONOTONIC, &end);
+  while((end.tv_nsec - start.tv_nsec) < delay)
+	{
+		clock_gettime(CLOCK_MONOTONIC, &end);
+	}
 }
