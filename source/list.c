@@ -629,13 +629,13 @@ int removeElementHashMap(long keyToRemove, Element** headerPointer, Element* wor
 				Element* trueHeadNext  = getNextOf(trueHead);
         if(trueHeadNext == NULL)
         {
-            addModification(workPage, 0, workingPointer);
+            addModification(workPage, NULL, workingPointer);
             *tailPointerOffset = SUBTRACT_POINTERS(workingPointer, buffer);
             *tailPointer = workingPointer;
         }
         else
         {
-            addModification(workPage, 0, trueHeadNext);
+            addModification(workPage, NULL, trueHeadNext);
             if(trueHeadNext->next == NULL)
             {
               *tailPointerOffset = SUBTRACT_POINTERS(trueHeadNext, buffer);

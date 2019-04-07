@@ -83,6 +83,13 @@ pthread_t workingThread;
 sem_t workingSemaphore;
 
 /*
+*	This mutex it's used while HASH_MAP_MODE
+*	updates the list with the modifications
+*	and removes them from.
+*/
+pthread_mutex_t mutex;
+
+/*
 *	This are the filedescriptores
 *	for the permanent files
 */
@@ -134,6 +141,7 @@ void disablePages();
 void markPages();
 void writeGraphics();
 Element* createElement(long key, size_t sizeOfElement, void* value);
+static inline uint64_t rdtsc();
 char* printTheMode();
 /*
 *	This are the function of the
@@ -297,7 +305,9 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 		    inplaceInsertUndoLog(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 			break;
 		case HASH_MAP_MODE:
+				pthread_mutex_lock(&mutex);
 		    inplaceInsertHashMap(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
+				pthread_mutex_unlock(&mutex);
 			break;
 		case FLUSH_ONLY_MODE:
 				#ifdef __OPTANE__
@@ -351,7 +361,9 @@ void bopl_remove(long keyToRemove)
 
 	switch (listMode) {
 		case HASH_MAP_MODE:
+				pthread_mutex_lock(&mutex);
 			  removeElementHashMap(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
+				pthread_mutex_unlock(&mutex);
 				break;
 		case UNDO_LOG_MODE:
 				removeElementUndoLog(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
@@ -486,7 +498,9 @@ void* bopl_lookup(long key)
 	Element* result;
 	switch (listMode) {
 		case HASH_MAP_MODE:
+				pthread_mutex_lock(&mutex);
 				result = findUpdatedElement(headerPointer, key);
+				pthread_mutex_unlock(&mutex);
 				value = result->value;
 				break;
 		case FLUSH_ONLY_MODE:
@@ -566,8 +580,10 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
             result = updateElementUndoLog(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
             break;
       case HASH_MAP_MODE:
+						pthread_mutex_lock(&mutex);
             result = updateElementHashMap(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
-            break;
+						pthread_mutex_unlock(&mutex);
+						break;
 			case DRAM_MODE:
 						result = updateElementDRAM(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 						break;
@@ -708,7 +724,9 @@ void initMechanism(int* grain)
 	}
   disablePages();
 
-  if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
+	pthread_mutex_init(&mutex, NULL);
+
+	if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
 		handle_error("pthreadCreate");
 }
 
@@ -732,7 +750,8 @@ void initMechanism(int* grain)
 			if(listMode == HASH_MAP_MODE)
 			{
 					int nextPage = getPointerPage(nextPointer);
-					while(safedPage <= nextPage)
+					pthread_mutex_lock(&mutex);
+					while(safedPage < nextPage)
 					{
 							Epoch_Modification* epochModification = getEpochModifications(safedPage);
 							while(epochModification != NULL && epochModification->modification != NULL)
@@ -759,9 +778,10 @@ void initMechanism(int* grain)
 									}
 									epochModification = epochModification->next;
 							}
-							removeEpochModifications(safedPage);
+							//removeEpochModifications(safedPage);
 							safedPage ++;
 					}
+					pthread_mutex_unlock(&mutex);
 			}
 			else
 			{
@@ -828,7 +848,8 @@ void initMechanism(int* grain)
 	    if(listMode == HASH_MAP_MODE)
 	    {
 	        int nextPage = getPointerPage(nextPointer);
-	        while(safedPage <= nextPage)
+					pthread_mutex_lock(&mutex);
+	        while(safedPage < nextPage)
 	        {
 	            Epoch_Modification* epochModification = getEpochModifications(safedPage);
 	            while(epochModification != NULL && epochModification->modification != NULL)
@@ -855,9 +876,10 @@ void initMechanism(int* grain)
 
 	                epochModification = epochModification->next;
 	            }
-	            removeEpochModifications(safedPage);
+	           // removeEpochModifications(safedPage);
 	            safedPage ++;
 	        }
+					pthread_mutex_unlock(&mutex);
 	    }
 			else
 			{
@@ -1338,11 +1360,13 @@ char* printTheMode()
 
 void latency(int delay)
 {
-	struct timespec start, end;
-	clock_gettime( CLOCK_MONOTONIC, &start);
-	clock_gettime( CLOCK_MONOTONIC, &end);
-  while((end.tv_nsec - start.tv_nsec) < delay)
-	{
-		clock_gettime(CLOCK_MONOTONIC, &end);
-	}
+	uint64_t start = rdtsc();
+  while((rdtsc() - start) < delay);
+}
+
+static inline uint64_t rdtsc()
+{
+   uint32_t hi, lo;
+   __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+   return ( (uint64_t)lo)|( ((uint64_t)hi)<<32 );
 }

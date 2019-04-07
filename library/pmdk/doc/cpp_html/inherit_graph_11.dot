@@ -1,7 +1,0 @@
-digraph "Graphical Class Hierarchy"
-{
-  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
-  node [fontname="Helvetica",fontsize="10",shape=record];
-  rankdir="LR";
-  Node1 [label="pmem::obj::object_traits\l\< void \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classpmem_1_1obj_1_1object__traits_3_01void_01_4.html",tooltip="Object traits specialization for the void type. "];
-}

@@ -1,7 +1,0 @@
-digraph "Graphical Class Hierarchy"
-{
-  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
-  node [fontname="Helvetica",fontsize="10",shape=record];
-  rankdir="LR";
-  Node1 [label="pmem::obj::standard\l_alloc_policy\< void \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classpmem_1_1obj_1_1standard__alloc__policy_3_01void_01_4.html",tooltip="Void specialization of the standard allocation policy. "];
-}
