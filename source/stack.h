@@ -13,6 +13,7 @@ typedef struct Stack {
 }Stack;
 
 Stack* createStack(unsigned capacity);
+void freeStack(Stack* stack);
 void push(Stack* stack, int item);
 int pop(Stack* stack, int modified);
 

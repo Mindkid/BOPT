@@ -14,6 +14,12 @@ Stack* createStack(unsigned capacity)
     return stack;
 }
 
+void freeStack(Stack* stack)
+{
+    free(stack->array);
+    free(stack);
+}
+
 int isFull(Stack* stack)
 {
     return (stack->elements == stack->capacity);

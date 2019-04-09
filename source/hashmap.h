@@ -7,8 +7,8 @@
 #include <string.h>
 #include "list.h"
 
-#define NUMBER_OF_BUCKETS 1000
-#define MAX_EPOCH 100
+#define NUMBER_OF_BUCKETS 50000
+#define MAX_EPOCH 2000
 
 typedef struct Modification
 {
