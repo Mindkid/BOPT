@@ -87,7 +87,7 @@ sem_t workingSemaphore;
 *	updates the list with the modifications
 *	and removes them from.
 */
-pthread_mutex_t mutex;
+pthread_mutex_t lock;
 
 /*
 *	This are the filedescriptores
@@ -305,9 +305,9 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 		    inplaceInsertUndoLog(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
 			break;
 		case HASH_MAP_MODE:
-				pthread_mutex_lock(&mutex);
+				pthread_mutex_lock(&lock);
 		    inplaceInsertHashMap(fatherKey, newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
-				pthread_mutex_unlock(&mutex);
+				pthread_mutex_unlock(&lock);
 			break;
 		case FLUSH_ONLY_MODE:
 				#ifdef __OPTANE__
@@ -361,9 +361,9 @@ void bopl_remove(long keyToRemove)
 
 	switch (listMode) {
 		case HASH_MAP_MODE:
-				pthread_mutex_lock(&mutex);
+				pthread_mutex_lock(&lock);
 			  removeElementHashMap(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
-				pthread_mutex_unlock(&mutex);
+				pthread_mutex_unlock(&lock);
 				break;
 		case UNDO_LOG_MODE:
 				removeElementUndoLog(keyToRemove, &headerPointer, workingPointer, workPage, &tailPointer, tailPointerOffset, buffer);
@@ -498,9 +498,9 @@ void* bopl_lookup(long key)
 	Element* result;
 	switch (listMode) {
 		case HASH_MAP_MODE:
-				pthread_mutex_lock(&mutex);
+				pthread_mutex_lock(&lock);
 				result = findUpdatedElement(headerPointer, key);
-				pthread_mutex_unlock(&mutex);
+				pthread_mutex_unlock(&lock);
 				value = result->value;
 				break;
 		case FLUSH_ONLY_MODE:
@@ -580,9 +580,9 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
             result = updateElementUndoLog(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
             break;
       case HASH_MAP_MODE:
-						pthread_mutex_lock(&mutex);
+						pthread_mutex_lock(&lock);
             result = updateElementHashMap(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
-						pthread_mutex_unlock(&mutex);
+						pthread_mutex_unlock(&lock);
 						break;
 			case DRAM_MODE:
 						result = updateElementDRAM(newElement, &headerPointer, workPage, &tailPointer, tailPointerOffset, buffer);
@@ -724,8 +724,8 @@ void initMechanism(int* grain)
 	}
   disablePages();
 
-	pthread_mutex_init(&mutex, NULL);
-
+	if(pthread_mutex_init(&lock, NULL) != 0)
+		handle_error("pthread Mutex Init");
 	if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
 		handle_error("pthreadCreate");
 }
@@ -750,7 +750,7 @@ void initMechanism(int* grain)
 			if(listMode == HASH_MAP_MODE)
 			{
 					int nextPage = getPointerPage(nextPointer);
-					pthread_mutex_lock(&mutex);
+					pthread_mutex_lock(&lock);
 					while(safedPage < nextPage)
 					{
 							Epoch_Modification* epochModification = getEpochModifications(safedPage);
@@ -778,15 +778,15 @@ void initMechanism(int* grain)
 									}
 									epochModification = epochModification->next;
 							}
-							removeEpochModifications(safedPage);
+							//removeEpochModifications(safedPage);
 							safedPage ++;
 					}
-					pthread_mutex_unlock(&mutex);
+					pthread_mutex_unlock(&lock);
 			}
 			else
 			{
 				int nextPage = getPointerPage(nextPointer);
-				while(safedPage <= nextPage)
+				while(safedPage < nextPage)
 				{
 					LogEntries* epochEntries = getEpochEntries(safedPage);
 					while(epochEntries != NULL)
@@ -848,43 +848,45 @@ void initMechanism(int* grain)
 	    if(listMode == HASH_MAP_MODE)
 	    {
 	        int nextPage = getPointerPage(nextPointer);
-					pthread_mutex_lock(&mutex);
-	        while(safedPage < nextPage)
+					pthread_mutex_lock(&lock);
+					while(safedPage < nextPage)
 	        {
 	            Epoch_Modification* epochModification = getEpochModifications(safedPage);
-	            while(epochModification != NULL && epochModification->modification != NULL)
+	            while(epochModification != NULL)
 	            {
-									Element* father = epochModification->modification->father;
-									if(father != NULL)
+									if(epochModification->modification != NULL)
 									{
-										addLogEntry(father, father->next, safedPage);
-										father->next = epochModification->modification->newNext;
-										if(father->next != NULL)
-	                  {
-	                    latency(WRITE_DELAY);
-											FLUSH(father->next);
-	                  }
+										Element* father = epochModification->modification->father;
+										if(father != NULL)
+										{
+											addLogEntry(father, father->next, safedPage);
+											father->next = epochModification->modification->newNext;
+											if(father->next != NULL)
+		                  {
+		                    latency(WRITE_DELAY);
+												FLUSH(father->next);
+		                  }
+										}
+										else
+										{
+											addLogEntry(NULL, headerPointer, safedPage);
+											headerPointer = epochModification->modification->newNext;
+											*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
+		                  latency(WRITE_DELAY);
+											FLUSH(headerPointerOffset);
+										}
 									}
-									else
-									{
-										addLogEntry(NULL, headerPointer, safedPage);
-										headerPointer = epochModification->modification->newNext;
-										*headerPointerOffset = SUBTRACT_POINTERS(headerPointer, buffer);
-	                  latency(WRITE_DELAY);
-										FLUSH(headerPointerOffset);
-									}
-
 	                epochModification = epochModification->next;
 	            }
-	            removeEpochModifications(safedPage);
+	            //removeEpochModifications(safedPage);
 	            safedPage ++;
 	        }
-					pthread_mutex_unlock(&mutex);
+					pthread_mutex_unlock(&lock);
 	    }
 			else
 			{
 				int nextPage = getPointerPage(nextPointer);
-				while(safedPage <= nextPage)
+				while(safedPage < nextPage)
 				{
 					LogEntries* epochEntries = getEpochEntries(safedPage);
 					while(epochEntries != NULL)
@@ -1239,8 +1241,8 @@ void checkThreshold(size_t sizeOfValue)
 			workingPointer = ADD_OFFSET_TO_POINTER(workingPointer, &fillPage);
 			if(listMode == HASH_MAP_MODE || listMode == UNDO_LOG_MODE)
 			{
-				sem_post(&workingSemaphore);
 				workPage ++;
+				sem_post(&workingSemaphore);
 			}
 			else
 			{
@@ -1281,8 +1283,8 @@ void checkThreshold(size_t sizeOfValue)
 			{
 				fillPage = getLeftToFillPage(workingPointer);
 				workingPointer = ADD_OFFSET_TO_POINTER(workingPointer, &fillPage);
-				sem_post(&workingSemaphore);
 				workPage ++;
+				sem_post(&workingSemaphore);
 			}
 		}
 		else

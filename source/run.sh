@@ -12,3 +12,5 @@ do
   rm -f ../ramdisk/*
   ./boplFileReaderSTTRAM.o -r $f
 done
+
+rm -f ../ramdisk/*
