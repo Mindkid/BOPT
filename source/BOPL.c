@@ -723,9 +723,11 @@ void initMechanism(int* grain)
 			workingPointer = savePointer;
 	}
   disablePages();
-
-	if(pthread_mutex_init(&lock, NULL) != 0)
-		handle_error("pthread Mutex Init");
+	if(listMode == HASH_MAP_MODE)
+	{
+		if(pthread_mutex_init(&lock, NULL) != 0)
+			handle_error("pthread Mutex Init");
+	}
 	if(pthread_create(&workingThread, NULL, &workingBatchThread, grain) != 0)
 		handle_error("pthreadCreate");
 }
@@ -840,10 +842,11 @@ void initMechanism(int* grain)
 	      toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
 	      latency(WRITE_DELAY);
 	    }
-	    latency(WRITE_DELAY);
+
 	    FLUSH(workingPointerOffset);
 			FENCE();
-	    savePointer = toFlush;
+			latency(WRITE_DELAY);
+			savePointer = toFlush;
 
 	    if(listMode == HASH_MAP_MODE)
 	    {
@@ -913,19 +916,20 @@ void initMechanism(int* grain)
 				}
 				flushFirstEntryOffset();
 			}
-	    latency(WRITE_DELAY);
+
 			FLUSH(tailPointerOffset);
 			FENCE();
+			latency(WRITE_DELAY);
 
 			*saveFunctionID  = temporaryFunctionID;
-	    latency(WRITE_DELAY);
 			FLUSH(saveFunctionID);
 			FENCE();
+			latency(WRITE_DELAY);
 
 	    *savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
-	    latency(WRITE_DELAY);
 	    FLUSH(savePointerOffset);
 			FENCE();
+			latency(WRITE_DELAY);
 	}
 #endif
 
@@ -991,8 +995,8 @@ void markPages()
 		{
 			dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
 			FLUSH(dirtyPages + WORD_OFFSET(currentPage));
-			latency(WRITE_DELAY);
 			FENCE();
+			latency(WRITE_DELAY);
 			savePointer = ADD_OFFSET_TO_POINTER(savePointer, &pageSize);
 			currentPage ++;
 		}
@@ -1179,8 +1183,9 @@ void handler(int sig, siginfo_t *si, void *unused)
 			FLUSH(toFlush);
 		 	toFlush = ADD_OFFSET_TO_POINTER(toFlush, &cacheLineSize);
 			numberFlushsPerOperation ++;
-	    latency(WRITE_DELAY);
 			FENCE();
+			latency(WRITE_DELAY);
+
 		}
 
 		return 1;

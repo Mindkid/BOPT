@@ -150,11 +150,8 @@ void addLogEntry(Element* father, Element* oldNext, long page)
         FENCE();
         latency(WRITE_DELAY);
         entry = (LogEntry*) ADD_OFFSET_TO_POINTER(entry, &cacheLineSize);
-        if(listMode == UNDO_LOG_MODE)
-          numberFlushsPerOperation ++;
     }
   #endif
-
   *lastEntryOffsetPointer = lastEntryOffset;
 
   #ifdef __OPTANE__
@@ -164,8 +161,6 @@ void addLogEntry(Element* father, Element* oldNext, long page)
     FENCE();
     latency(WRITE_DELAY);
   #endif
-  if(listMode == UNDO_LOG_MODE)
-    numberFlushsPerOperation ++;
 }
 
 LogEntries* getEpochEntries(long epoch)
