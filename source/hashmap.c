@@ -34,9 +34,10 @@ void insertModification(long epoch, long fatherKey, Modification* newModif)
     ModificationBucket* hash = hashOfModifications + hashCode;
     Modification* hashHead = hash->head;
 
-    if(hashHead == NULL)
+    if(hash->head == NULL)
     {
       hash->head = newModif;
+      newModif->previous = NULL;
     }
     else
     {
@@ -44,8 +45,9 @@ void insertModification(long epoch, long fatherKey, Modification* newModif)
         {
             hashHead = hashHead->next;
         }
-        newModif->previous =  hashHead;
         hashHead->next = newModif;
+        newModif->previous =  hashHead;
+
     }
 
     int epoch_position = epoch % MAX_EPOCH;
@@ -80,7 +82,8 @@ void addModification(long epoch, Element* father, Element* newNext)
     newModif->epoch_k = epoch;
     newModif->father = father;
     newModif->newNext = newNext;
-
+    newModif->next = NULL;
+    
     if(father == NULL)
     {
       insertModification(epoch, 0, newModif);
@@ -120,17 +123,15 @@ void* removeEpochModifications(long epoch)
 
           hash = hashOfModifications + hashCode;
 
-          if(modifToRemove->previous == NULL)
-          {
+          if(modifToRemove == hash->head)
             hash->head = modifToRemove->next;
-            if(modifToRemove->next != NULL)
-              modifToRemove->next->previous = NULL;
-          }
-          else
-          {
+
+          if(modifToRemove->previous != NULL)
             modifToRemove->previous->next = modifToRemove->next;
+
+          if(modifToRemove->next != NULL)
             modifToRemove->next->previous = modifToRemove->previous;
-          }
+
           free(modifToRemove);
         }
         freeEpochModification = removeEpochModifications;

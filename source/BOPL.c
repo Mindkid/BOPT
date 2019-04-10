@@ -780,7 +780,7 @@ void initMechanism(int* grain)
 									}
 									epochModification = epochModification->next;
 							}
-							//removeEpochModifications(safedPage);
+							removeEpochModifications(safedPage);
 							safedPage ++;
 					}
 					pthread_mutex_unlock(&lock);
@@ -881,7 +881,7 @@ void initMechanism(int* grain)
 									}
 	                epochModification = epochModification->next;
 	            }
-	            //removeEpochModifications(safedPage);
+	            removeEpochModifications(safedPage);
 	            safedPage ++;
 	        }
 					pthread_mutex_unlock(&lock);
