@@ -4,9 +4,16 @@
 #include "list.h"
 #include "BOPL.h"
 
-#define FIRST_ENTRY_OFFSET_FILE_NAME "../ramdisk/firstEntryOffset.dat"
-#define LAST_ENTRY_OFFSET_FILE_NAME "../ramdisk/lastEntryOffset.dat"
-#define LOG_FILE_NAME "../ramdisk/log.dat"
+#ifdef __OPTANE__
+	#define FIRST_ENTRY_OFFSET_FILE_NAME "/mnt/optane/pmartins/firstEntryOffset.dat"
+	#define LAST_ENTRY_OFFSET_FILE_NAME "/mnt/optane/pmartins/lastEntryOffset.dat"
+	#define LOG_FILE_NAME "/mnt/optane/pmartins/log.dat"
+#else
+	#define FIRST_ENTRY_OFFSET_FILE_NAME "../ramdisk/firstEntryOffset.dat"
+	#define LAST_ENTRY_OFFSET_FILE_NAME "../ramdisk/lastEntryOffset.dat"
+	#define LOG_FILE_NAME "../ramdisk/log.dat"
+#endif
+
 #define NUMBER_LOG_PER_PAGE 200
 
 /*

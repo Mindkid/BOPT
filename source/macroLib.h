@@ -23,20 +23,28 @@
 #endif /*  __CLWB__  */
 #define FENCE() asm("sfence");
 
-#define MAP_FILE_NAME "../ramdisk/mapFile.dat"
 #define MAP_ADDR 0x7f49dcfc0000
-
-#define SAVE_POINTER_OFFSET_FILE_NAME "../ramdisk/savePointerOffset.dat"
-#define WORKING_POINTER_OFFSET_FILE_NAME "../ramdisk/workingPointerOffset.dat"
-#define HEADER_POINTER_OFFSET_FILE_NAME "../ramdisk/headerPointerOffset.dat"
-#define TAIL_POINTER_OFFSET_FILE_NAME "../ramdisk/tailPointerOffset.dat"
-
-#define SAVE_FUNCTION_ID_FILE_NAME "../ramdisk/saveFunctionID.dat"
-
 enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
-#define DIRTY_PAGES_FILE_NAME "../ramdisk/dirtyPages.dat"
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
+
+#ifdef __OPTANE__
+  #define MAP_FILE_NAME "/mnt/optane/pmartins/ramdisk/mapFile.dat"
+  #define SAVE_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/ramdisk/savePointerOffset.dat"
+  #define WORKING_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/ramdisk/workingPointerOffset.dat"
+  #define HEADER_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/ramdisk/headerPointerOffset.dat"
+  #define TAIL_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/ramdisk/tailPointerOffset.dat"
+  #define SAVE_FUNCTION_ID_FILE_NAME "/mnt/optane/pmartins/ramdisk/saveFunctionID.dat"
+  #define DIRTY_PAGES_FILE_NAME "/mnt/optane/pmartins/ramdisk/dirtyPages.dat"
+#else
+  #define MAP_FILE_NAME "../ramdisk/mapFile.dat"
+  #define SAVE_POINTER_OFFSET_FILE_NAME "../ramdisk/savePointerOffset.dat"
+  #define WORKING_POINTER_OFFSET_FILE_NAME "../ramdisk/workingPointerOffset.dat"
+  #define HEADER_POINTER_OFFSET_FILE_NAME "../ramdisk/headerPointerOffset.dat"
+  #define TAIL_POINTER_OFFSET_FILE_NAME "../ramdisk/tailPointerOffset.dat"
+  #define DIRTY_PAGES_FILE_NAME "../ramdisk/dirtyPages.dat"
+  #define SAVE_FUNCTION_ID_FILE_NAME "../ramdisk/saveFunctionID.dat"
+#endif
 
 #ifdef __OPTANE__
   #define MEMORY_TYPE "OPTANE"

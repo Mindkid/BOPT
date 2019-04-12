@@ -22,6 +22,7 @@ runRam()
     rm -f ../ramdisk/*
     ./boplFileReaderSTTRAM.o -r $f
   done
+  rm -f ../ramdisk/*
 }
 
 runOptane()
@@ -30,9 +31,10 @@ runOptane()
   for f in $TESTOPTANE
   do
     echo "Executing: $f"
-    rm -f ../ramdisk/*
+    rm -f /mnt/optane/pmartins/*
     ./boplFileReaderOPTANE.o -r $f
   done
+  rm -f /mnt/optane/pmartins/*
 }
 
 
@@ -57,5 +59,3 @@ while getopts ":aor" o; do
             ;;
     esac
 done
-
-rm -f ../ramdisk/*

@@ -17,4 +17,3 @@ boplFileReaderOPTANE: boplFileReader.c list.c hashmap.c log.c BOPL.c
 
 clean:
 	rm *.o
-	rm ../ramdisk/*.dat
