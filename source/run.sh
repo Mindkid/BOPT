@@ -28,11 +28,11 @@ runRam()
 runOptane()
 {
   echo "OPTANE - TESTING"
-  for f in $TESTOPTANE
+  for t in $TESTOPTANE
   do
-    echo "Executing: $f"
+    echo "Executing: $t"
     rm -f /mnt/optane/pmartins/*
-    ./boplFileReaderOPTANE.o -r $f
+    ./boplFileReaderOPTANE.o -r $t
   done
   rm -f /mnt/optane/pmartins/*
 }

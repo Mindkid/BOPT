@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
     prob_of_operation[i] = 0;
   }
 
-  while((opt = getopt(argc, argv, "hi:p:u:r:l:c:o:g:s:m:e:")) != -1)
+  while((opt = getopt(argc, argv, "hi:p:u:r:l:c:o:g:s:m:e:t")) != -1)
   {
     switch(opt)
     {
