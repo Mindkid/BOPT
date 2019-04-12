@@ -29,13 +29,13 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 
 #ifdef __OPTANE__
-  #define MAP_FILE_NAME "/mnt/optane/pmartins/ramdisk/mapFile.dat"
-  #define SAVE_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/ramdisk/savePointerOffset.dat"
-  #define WORKING_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/ramdisk/workingPointerOffset.dat"
-  #define HEADER_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/ramdisk/headerPointerOffset.dat"
-  #define TAIL_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/ramdisk/tailPointerOffset.dat"
-  #define SAVE_FUNCTION_ID_FILE_NAME "/mnt/optane/pmartins/ramdisk/saveFunctionID.dat"
-  #define DIRTY_PAGES_FILE_NAME "/mnt/optane/pmartins/ramdisk/dirtyPages.dat"
+  #define MAP_FILE_NAME "/mnt/optane/pmartins/mapFile.dat"
+  #define SAVE_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/savePointerOffset.dat"
+  #define WORKING_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/workingPointerOffset.dat"
+  #define HEADER_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/headerPointerOffset.dat"
+  #define TAIL_POINTER_OFFSET_FILE_NAME "/mnt/optane/pmartins/tailPointerOffset.dat"
+  #define SAVE_FUNCTION_ID_FILE_NAME "/mnt/optane/pmartins/saveFunctionID.dat"
+  #define DIRTY_PAGES_FILE_NAME "/mnt/optane/pmartins/dirtyPages.dat"
 #else
   #define MAP_FILE_NAME "../ramdisk/mapFile.dat"
   #define SAVE_POINTER_OFFSET_FILE_NAME "../ramdisk/savePointerOffset.dat"
