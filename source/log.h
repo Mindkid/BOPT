@@ -38,7 +38,7 @@ extern int cacheLineSize;
 extern int numberFlushsPerOperation;
 extern int listMode;
 
-#ifdef __OPTANE__
+#if defined(__OPTANE__) || defined(__SSD__)
 extern long pageSize;
 #endif
 /*

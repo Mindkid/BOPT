@@ -23,7 +23,7 @@ typedef struct Element
 extern int numberFlushsPerOperation;
 extern int cacheLineSize;
 
-#ifdef __OPTANE__
+#if defined(__OPTANE__) || defined(__SSD__)
 	extern Element* savePointer;
 #endif
 /***************      ADD ELEMENT IN LIST     ****************/

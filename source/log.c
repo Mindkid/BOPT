@@ -74,7 +74,7 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
           if(lastEntry->oldNext == NULL)
           {
             *headerPointerOffset =  SUBTRACT_POINTERS(workingPointer, buffer);
-            #ifdef __OPTANE__
+            #if defined(__OPTANE__) || defined(__SSD__)
               msync(headerPointerOffset, sizeof(int), MS_SYNC);
             #else
               FLUSH(headerPointerOffset);
@@ -85,7 +85,7 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
           else
           {
             *headerPointerOffset = SUBTRACT_POINTERS(lastEntry->oldNext, buffer);
-            #ifdef __OPTANE__
+            #if defined(__OPTANE__) || defined(__SSD__)
               msync(headerPointerOffset, sizeof(int), MS_SYNC);
             #else
               FLUSH(headerPointerOffset);
@@ -103,7 +103,7 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
         lastEntry = logEntries + lastEntryOffset;
     }
     *lastEntryOffsetPointer = lastEntryOffset;
-    #ifdef __OPTANE__
+    #if defined(__OPTANE__) || defined(__SSD__)
       msync(lastEntryOffsetPointer, sizeof(int), MS_SYNC);
     #else
       FLUSH(lastEntryOffsetPointer);
@@ -115,7 +115,7 @@ void recoverFromLog(Element** headerPointer, Element* buffer, Element* workingPo
 void recoverStructure(Element* father, Element* oldNext, long epoch, Element* buffer)
 {
     father->next = oldNext;
-    #ifdef __OPTANE__
+    #if defined(__OPTANE__) || defined(__SSD__)
       long offsetToPageStart = (epoch * pageSize);
       Element* pageStart = ADD_OFFSET_TO_POINTER(buffer, &offsetToPageStart);
       msync(pageStart, SUBTRACT_POINTERS(father, pageStart), MS_SYNC);
@@ -139,7 +139,7 @@ void addLogEntry(Element* father, Element* oldNext, long page)
   else
     lastEntry = logEntries;
 
-  #ifdef __OPTANE__
+  #if defined(__OPTANE__) || defined(__SSD__)
     msync(logEntries, SUBTRACT_POINTERS(logEntries, entry), MS_SYNC);
     if(listMode == UNDO_LOG_MODE)
       numberFlushsPerOperation ++;
@@ -154,7 +154,7 @@ void addLogEntry(Element* father, Element* oldNext, long page)
   #endif
   *lastEntryOffsetPointer = lastEntryOffset;
 
-  #ifdef __OPTANE__
+  #if defined(__OPTANE__) || defined(__SSD__)
     msync(lastEntryOffsetPointer, sizeof(int), MS_SYNC);
   #else
     FLUSH(lastEntryOffsetPointer);
@@ -205,7 +205,7 @@ LogEntries* getEpochEntries(long epoch)
 void flushFirstEntryOffset()
 {
   *firstEntryOffsetPointer = firstEntryOffset;
-  #ifdef __OPTANE__
+  #if defined(__OPTANE__) || defined(__SSD__)
     msync(firstEntryOffsetPointer, sizeof(int), MS_SYNC);
   #else
     FLUSH(firstEntryOffsetPointer);

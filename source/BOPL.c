@@ -230,7 +230,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 				break;
 		case FLUSH_ONLY_MODE:
 				forceFlush(newElement);
-				#ifdef __OPTANE__
+				#if defined(__OPTANE__) || defined(__SSD__)
 					msync(workingPointerOffset, sizeof(int), MS_SYNC);
 				#else
 					FLUSH(workingPointerOffset);
@@ -241,7 +241,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 				newElement = addElementInList(&tailPointer, newElement);
 				if(newElement->next != NULL)
         {
-					#ifdef __OPTANE__
+					#if defined(__OPTANE__) || defined(__SSD__)
 						long sizeToSync = SUBTRACT_POINTERS(newElement, savePointer);
 						msync(savePointer, sizeToSync, MS_SYNC);
 					#else
@@ -252,7 +252,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 					numberFlushsPerOperation ++;
         }
         *tailPointerOffset = SUBTRACT_POINTERS(tailPointer, buffer);
-				#ifdef __OPTANE__
+				#if defined(__OPTANE__) || defined(__SSD__)
 					msync(tailPointerOffset, sizeof(int), MS_SYNC);
 				#else
 					FLUSH(tailPointerOffset);
@@ -262,7 +262,7 @@ void bopl_insert(long key, size_t sizeOfValue, void* value)
 				numberFlushsPerOperation ++;
 
 				*saveFunctionID = functionID;
-				#ifdef __OPTANE__
+				#if defined(__OPTANE__) || defined(__SSD__)
 					msync(saveFunctionID, sizeof(int), MS_SYNC);
 				#else
 					FLUSH(saveFunctionID);
@@ -310,7 +310,7 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 				pthread_mutex_unlock(&lock);
 			break;
 		case FLUSH_ONLY_MODE:
-				#ifdef __OPTANE__
+				#if defined(__OPTANE__) || defined(__SSD__)
 					msync(workingPointerOffset, sizeof(int), MS_SYNC);
 				#else
 		  		FLUSH(workingPointerOffset);
@@ -320,7 +320,7 @@ void bopl_inplace_insert(long fatherKey, long key, size_t sizeOfValue, void* new
 				numberFlushsPerOperation ++;
 				inplaceInsertFlush(fatherKey, newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
 				*saveFunctionID = functionID;
-				#ifdef __OPTANE__
+				#if defined(__OPTANE__) || defined(__SSD__)
 					msync(saveFunctionID, sizeof(int), MS_SYNC);
 				#else
 		      FLUSH(saveFunctionID);
@@ -371,7 +371,7 @@ void bopl_remove(long keyToRemove)
 		case FLUSH_ONLY_MODE:
 				 removeElementFlush(keyToRemove, &headerPointer, headerPointerOffset, buffer, workingPointer, &tailPointer, tailPointerOffset);
 				 *saveFunctionID = functionID;
-				 #ifdef __OPTANE__
+				 #if defined(__OPTANE__) || defined(__SSD__)
 				 	msync(saveFunctionID, sizeof(int), MS_SYNC);
 				 #else
 				 	FLUSH(saveFunctionID);
@@ -432,7 +432,7 @@ void bopl_close()
 	}
 
 	*saveFunctionID = 0;
-	#ifdef __OPTANE__
+	#if defined(__OPTANE__) || defined(__SSD__)
 		msync(saveFunctionID, sizeof(int), MS_SYNC);
 	#else
 	  latency(WRITE_DELAY);
@@ -505,7 +505,7 @@ void* bopl_lookup(long key)
 				break;
 		case FLUSH_ONLY_MODE:
 				*saveFunctionID = functionID;
-				#ifdef __OPTANE__
+				#if defined(__OPTANE__) || defined(__SSD__)
 					msync(saveFunctionID, sizeof(int), MS_SYNC);
 				#else
 					FLUSH(saveFunctionID);
@@ -556,7 +556,7 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 	switch(listMode)
 	{
 	    case FLUSH_ONLY_MODE:
-						#ifdef __OPTANE__
+						#if defined(__OPTANE__) || defined(__SSD__)
 							msync(workingPointerOffset, sizeof(int), MS_SYNC);
 						#else
 							FLUSH(workingPointerOffset);
@@ -567,7 +567,7 @@ int bopl_update(long key, size_t sizeOfValue, void* new_value)
 	        	result = updateElementFlush(newElement, sizeOfValue, &headerPointer, headerPointerOffset, buffer, &tailPointer, tailPointerOffset);
 						*saveFunctionID = functionID;
 
-						#ifdef __OPTANE__
+						#if defined(__OPTANE__) || defined(__SSD__)
 							msync(saveFunctionID, sizeof(int), MS_SYNC);
 						#else
 							FLUSH(saveFunctionID);
@@ -662,7 +662,7 @@ int initBufferMapping(long numberOfPages)
 	tailPointer = buffer;
 	tailPointer = ADD_OFFSET_TO_POINTER(tailPointer, tailPointerOffset);
 
-	#ifdef __OPTANE__
+	#if defined(__OPTANE__) || defined(__SSD__)
 		if(listMode == FLUSH_ONLY_MODE)
 		{
 			savePointerOffsetDescriptor = openFile(&offsetFileCreated, SAVE_POINTER_OFFSET_FILE_NAME, &sizeOfInt);
@@ -733,7 +733,7 @@ void initMechanism(int* grain)
 }
 
 
-#ifdef __OPTANE__
+#if defined(__OPTANE__) || defined(__SSD__)
 	/*
 	*	This are the functions related
 	*	to the thread execution This function
@@ -982,7 +982,7 @@ void markPages()
 	int currentPage = safedPage;
 	int workingPage = workPage;
 
-	#ifdef __OPTANE__
+	#if defined(__OPTANE__) || defined(__SSD__)
 		while(currentPage <= workingPage)
 		{
 			dirtyPages[WORD_OFFSET(currentPage)] |= (1 << BIT_OFFSET(currentPage));
@@ -1004,14 +1004,14 @@ void markPages()
 	workingPointer = savePointer;
 
 	*workingPointerOffset = SUBTRACT_POINTERS(workingPointer, buffer);
-	#ifdef __OPTANE__
+	#if defined(__OPTANE__) || defined(__SSD__)
 		msync(workingPointerOffset, sizeof(int), MS_SYNC);
 	#else
 		FLUSH(workingPointerOffset);
 	#endif
 	*savePointerOffset = SUBTRACT_POINTERS(savePointer, buffer);
 
-	#ifdef __OPTANE__
+	#if defined(__OPTANE__) || defined(__SSD__)
 		msync(savePointerOffset, sizeof(int), MS_SYNC);
 	#else
 		FLUSH(savePointerOffset);
@@ -1153,7 +1153,7 @@ void handler(int sig, siginfo_t *si, void *unused)
 }
 
 
-#ifdef __OPTANE__
+#if defined(__OPTANE__) || defined(__SSD__)
 /*
 *	Function that it's used
 *	to force flush while in
@@ -1229,7 +1229,7 @@ void checkThreshold(size_t sizeOfValue)
 	processThreshold(nextPointer);
 }
 
-#ifdef __OPTANE__
+#if defined(__OPTANE__) || defined(__SSD__)
 /*
 *	This function it's used when it's
 * testing the block mode ( __OPTANE__)

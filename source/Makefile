@@ -1,7 +1,7 @@
 CC=gcc -D_FILE_OFFSET_BITS=64 -g -Wall
 CFLAGS=-lpthread -lrt
 
-all: boplFileReader benchmark boplFileReaderSTTRAM boplFileReaderOPTANE
+all: boplFileReader benchmark boplFileReaderSTTRAM boplFileReaderOPTANE boplFileReaderSSD
 
 boplFileReader: boplFileReader.c list.c hashmap.c log.c BOPL.c
 	$(CC)  BOPL.c list.c  hashmap.c boplFileReader.c log.c -o  boplFileReader.o $(CFLAGS)
@@ -14,6 +14,9 @@ boplFileReaderSTTRAM: boplFileReader.c list.c hashmap.c log.c BOPL.c
 
 boplFileReaderOPTANE: boplFileReader.c list.c hashmap.c log.c BOPL.c
 	$(CC) -D __OPTANE__ BOPL.c list.c  hashmap.c boplFileReader.c log.c -o boplFileReaderOPTANE.o $(CFLAGS)
+
+boplFileReaderSSD: boplFileReader.c list.c hashmap.c log.c BOPL.c
+	$(CC) -D __SSD__ BOPL.c list.c  hashmap.c boplFileReader.c log.c -o boplFileReaderSSD.o $(CFLAGS)
 
 clean:
 	rm *.o

@@ -52,7 +52,9 @@ Element* findElement(Element* head, long key)
       break;
     }
     result = result->next;
-    #ifndef __OPTANE__
+    #if defined(__OPTANE__) || defined(__SSD__)
+      // DO NOTHING
+    #else
       latency(READ_DELAY/cacheLineSize);
     #endif
   }
@@ -72,7 +74,9 @@ Element* findFatherElement(Element* head, long sonKey)
 			    break;
 	      }
       result = result->next;
-      #ifndef __OPTANE__
+      #if defined(__OPTANE__) || defined(__SSD__)
+        // DO NOTHING
+      #else
         latency(READ_DELAY/cacheLineSize);
       #endif
 		}
@@ -175,7 +179,7 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
 
       forceFlush(newElement);
       *headerPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
-      #ifdef __OPTANE__
+      #if defined(__OPTANE__) || defined(__SSD__)
         msync(headerPointerOffset, sizeof(int), MS_SYNC);
       #else
         FLUSH(headerPointerOffset);
@@ -194,7 +198,7 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
         forceFlush(newElement);
 
         father->next = newElement;
-        #ifdef __OPTANE__
+        #if defined(__OPTANE__) || defined(__SSD__)
           msync(savePointer, SUBTRACT_POINTERS(savePointer, father), MS_SYNC);
         #else
           FLUSH(father->next);
@@ -205,7 +209,7 @@ void inplaceInsertFlush(long fatherKey, Element* newElement, size_t sizeOfValue,
         if(newElement->next == NULL)
         {
           *tailPointerOffset = SUBTRACT_POINTERS(newElement, buffer);
-          #ifdef __OPTANE__
+          #if defined(__OPTANE__) || defined(__SSD__)
             msync(tailPointerOffset, sizeof(int), MS_SYNC);
           #else
             FLUSH(tailPointerOffset);
@@ -314,7 +318,7 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
     forceFlush(newSon);
 
     *headerPointerOffset = SUBTRACT_POINTERS(newSon, buffer);
-    #ifdef __OPTANE__
+    #if defined(__OPTANE__) || defined(__SSD__)
       msync(headerPointerOffset, sizeof(int), MS_SYNC);
     #else
       FLUSH(headerPointerOffset);
@@ -327,7 +331,9 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
   else
   {
     Element* father = findFatherElement(head, newSon->key);
-    #ifndef __OPTANE__
+    #if defined(__OPTANE__) || defined(__SSD__)
+      // DO NOTHING
+    #else
       latency(READ_DELAY);
     #endif
     if(father->next != NULL)
@@ -335,7 +341,7 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
       newSon->next = father->next->next;
       forceFlush(newSon);
       father->next = newSon;
-      #ifdef __OPTANE__
+      #if defined(__OPTANE__) || defined(__SSD__)
         msync(savePointer, SUBTRACT_POINTERS(savePointer, father), MS_SYNC);
       #else
         FLUSH(father->next);
@@ -353,7 +359,7 @@ int updateElementFlush(Element* newSon, size_t sizeOfValue, Element** headerPoin
   if(newSon->next == NULL)
   {
       *tailPointerOffset = SUBTRACT_POINTERS(newSon, buffer);
-      #ifdef __OPTANE__
+      #if defined(__OPTANE__) || defined(__SSD__)
         msync(tailPointerOffset, sizeof(int), MS_SYNC);
       #else
         latency(READ_DELAY);
@@ -491,7 +497,7 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
       if(head->next == NULL)
       {
           *headerPointerOffset = SUBTRACT_POINTERS(workingPointer, buffer);
-          #ifdef __OPTANE__
+          #if defined(__OPTANE__) || defined(__SSD__)
             msync(headerPointerOffset, sizeof(int), MS_SYNC);
           #else
             FLUSH(headerPointerOffset);
@@ -504,7 +510,7 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
       else
       {
           *headerPointerOffset = SUBTRACT_POINTERS(head->next, buffer);
-          #ifdef __OPTANE__
+          #if defined(__OPTANE__) || defined(__SSD__)
             msync(headerPointerOffset, sizeof(int), MS_SYNC);
           #else
             FLUSH(headerPointerOffset);
@@ -519,7 +525,7 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
       if(head->next == NULL)
       {
         *tailPointerOffset = SUBTRACT_POINTERS(head, buffer);
-        #ifdef __OPTANE__
+        #if defined(__OPTANE__) || defined(__SSD__)
           msync(tailPointerOffset, sizeof(int), MS_SYNC);
         #else
           FLUSH(tailPointerOffset);
@@ -538,7 +544,7 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
           father->next = father->next->next;
           if(father->next != NULL)
           {
-            #ifdef __OPTANE__
+            #if defined(__OPTANE__) || defined(__SSD__)
               msync(savePointer, SUBTRACT_POINTERS(father, savePointer), MS_SYNC);
             #else
               FLUSH(father->next);
@@ -550,7 +556,7 @@ int removeElementFlush(long keyToRemove, Element** headerPointer, int* headerPoi
           else
           {
             *tailPointerOffset = SUBTRACT_POINTERS(father, buffer);
-            #ifdef __OPTANE__
+            #if defined(__OPTANE__) || defined(__SSD__)
               msync(tailPointerOffset, sizeof(int), MS_SYNC);
             #else
               FLUSH(tailPointerOffset);

@@ -83,7 +83,7 @@ void addModification(long epoch, Element* father, Element* newNext)
     newModif->father = father;
     newModif->newNext = newNext;
     newModif->next = NULL;
-    
+
     if(father == NULL)
     {
       insertModification(epoch, 0, newModif);
@@ -200,7 +200,9 @@ Element* getNextOf(Element* father)
     if(result == NULL)
     {
         result = father->next;
-        #ifndef __OPTANE__
+        #if defined( __OPTANE__) || defined( __SSD__)
+          // DO NOTHING
+        #else
           latency(READ_DELAY/cacheLineSize);
         #endif
     }

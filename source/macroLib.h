@@ -49,14 +49,18 @@ enum { BITS_PER_WORD = sizeof(uint32_t) * CHAR_BIT };
 #ifdef __OPTANE__
   #define MEMORY_TYPE "OPTANE"
 #else
-  #ifdef __STT_RAM__
-    #define WRITE_DELAY 100
-    #define READ_DELAY 100
-    #define MEMORY_TYPE "STT-RAM"
+  #ifdef __SSD__
+    #define MEMORY_TYPE "SSD"
   #else
-    #define WRITE_DELAY 300
-    #define READ_DELAY 300
-    #define MEMORY_TYPE "PCM"
+    #ifdef __STT_RAM__
+      #define WRITE_DELAY 100
+      #define READ_DELAY 100
+      #define MEMORY_TYPE "STT-RAM"
+    #else
+      #define WRITE_DELAY 300
+      #define READ_DELAY 300
+      #define MEMORY_TYPE "PCM"
+    #endif
   #endif
 #endif
 
