@@ -1,6 +1,7 @@
 #!/bin/bash
 TESTDIR=./tests/*.bopl
 TESTOPTANE=./testsOptane/*.bopl
+TESTHASHMAP=./tests/m:2_*.bopl
 
 help()
 {
@@ -50,9 +51,18 @@ runOptane()
   rm -f /mnt/optane/pmartins/*
 }
 
+testHahMap()
+{
+  echo "BUCKET - TESTING"
+  for t in $TESTHASHMAP
+  do
+    echo "Executing: $t"
+    rm -f ../ramdisk/*
+    ./hashmap$1.o -r $t 
+  done
+}
 
-
-while getopts ":aors" o; do
+while getopts ":aorsh" o; do
     case "${o}" in
         a)
             make
@@ -70,6 +80,14 @@ while getopts ":aors" o; do
         s)
             make
             runSSD
+            ;;
+        h)
+            testHahMap 10
+            testHahMap 50
+            testHahMap 100
+            testHahMap 500
+            testHahMap 1000
+            testHahMap 5000
             ;;
         *)
             help
